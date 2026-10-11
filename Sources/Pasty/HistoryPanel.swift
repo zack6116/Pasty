@@ -1,10 +1,14 @@
 import AppKit
+import Combine
 import PastyCore
 import SwiftUI
 
 enum HistoryPanelMetrics {
-    static let width: CGFloat = 420
-    static let height: CGFloat = 480
+    static let width: CGFloat = 440
+    static let height: CGFloat = 520
+    static let previewWidth: CGFloat = 680
+    static let previewHeight: CGFloat = 720
+    static let cornerRadius: CGFloat = 16
 }
 
 final class HistoryPanel: NSPanel {
@@ -43,15 +47,34 @@ final class HistoryPanelController {
     init(store: ClipboardStore, monitor: ClipboardMonitor) {
         self.store = store
         self.monitor = monitor
-        let hosting = NSHostingView(rootView: HistoryView(model: model, onCopy: { [weak self] text in
-            self?.copy(text)
-        }))
+        let historyStore = store
+        let hosting = NSHostingView(rootView: HistoryView(
+            model: model,
+            imageURL: { item in historyStore.imageURL(for: item) },
+            onCopy: { [weak self] item in
+                self?.copy(item)
+            },
+            onDelete: { [weak self] item in
+                self?.delete(item)
+            }
+        ))
         hosting.wantsLayer = true
         hosting.layer?.backgroundColor = NSColor.clear.cgColor
-        hosting.layer?.cornerRadius = 12
+        hosting.layer?.cornerRadius = HistoryPanelMetrics.cornerRadius
         hosting.layer?.masksToBounds = true
+        hosting.sizingOptions = []
         panel.contentView = hosting
+        model.$isPreviewing
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] previewing in
+                guard let self, self.panel.isVisible else { return }
+                self.resize(previewing: previewing, animated: true)
+            }
+            .store(in: &cancellables)
     }
+
+    private var cancellables = Set<AnyCancellable>()
 
     func toggle() {
         if panel.isVisible {
@@ -92,9 +115,19 @@ final class HistoryPanelController {
         model.reload(store.items)
     }
 
-    private func copy(_ text: String) {
-        monitor.write(text)
+    private func copy(_ item: ClipItem) {
+        if item.isImage {
+            guard let data = store.imageData(for: item) else { return }
+            monitor.writeImage(data)
+        } else {
+            monitor.write(item.text)
+        }
         hide()
+    }
+
+    private func delete(_ item: ClipItem) {
+        guard store.delete(id: item.id) else { return }
+        model.remove(item.id)
     }
 
     private func positionNearMouse() {
@@ -110,6 +143,31 @@ final class HistoryPanelController {
         origin.x = min(max(origin.x, visible.minX + 8), visible.maxX - size.width - 8)
         origin.y = min(max(origin.y, visible.minY + 8), visible.maxY - size.height - 8)
         panel.setFrame(NSRect(origin: origin, size: size), display: true)
+    }
+
+    private func resize(previewing: Bool, animated: Bool) {
+        let desired = previewing
+            ? NSSize(width: HistoryPanelMetrics.previewWidth, height: HistoryPanelMetrics.previewHeight)
+            : NSSize(width: HistoryPanelMetrics.width, height: HistoryPanelMetrics.height)
+        let current = panel.frame
+        let screen = NSScreen.screens.first { $0.frame.intersects(current) } ?? NSScreen.main
+        let visible = screen?.visibleFrame ?? current
+        let size = NSSize(
+            width: min(desired.width, max(320, visible.width - 16)),
+            height: min(desired.height, max(360, visible.height - 16))
+        )
+        var origin = NSPoint(x: current.midX - size.width / 2, y: current.midY - size.height / 2)
+        origin.x = min(max(origin.x, visible.minX + 8), visible.maxX - size.width - 8)
+        origin.y = min(max(origin.y, visible.minY + 8), visible.maxY - size.height - 8)
+        let frame = NSRect(origin: origin, size: size)
+        guard animated else {
+            panel.setFrame(frame, display: true)
+            return
+        }
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            panel.animator().setFrame(frame, display: true)
+        }
     }
 
     private func installMonitors() {
@@ -149,14 +207,25 @@ final class HistoryPanelController {
             model.moveSelection(by: 1)
             return true
         case 36, 76: // return, keypad enter
-            if let text = model.selectedText() {
-                copy(text)
+            if let item = model.selectedItem {
+                copy(item)
             } else {
                 hide()
             }
             return true
+        case 49 where event.modifierFlags.intersection([.command, .option, .control]).isEmpty:
+            if event.isARepeat { return true }
+            if !model.query.isEmpty {
+                return false
+            }
+            model.togglePreview()
+            return true
         case 53: // escape
-            hide()
+            if model.isPreviewing {
+                model.closePreview()
+            } else {
+                hide()
+            }
             return true
         default:
             return false

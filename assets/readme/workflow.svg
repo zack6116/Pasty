@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="220" viewBox="0 0 1200 220"
+     role="img" aria-labelledby="flow-title flow-desc">
+  <title id="flow-title">从复制到贴回去</title>
+  <desc id="flow-desc">五步：复制文字或图片，留在本机最多 100 条，Command+Shift+V 打开且不抢焦点，回车写回剪贴板，Command+V 在原来的窗口里粘贴。</desc>
+  <rect width="1200" height="220" rx="28" fill="#F4EFE6"/>
+  <rect x="48" y="36" width="1104" height="148" rx="18" fill="#FFFCF7" stroke="#E4D9C8" stroke-width="1.5"/>
+  <g stroke="#E4D9C8" stroke-width="1.5" stroke-dasharray="4 5">
+    <line x1="268" y1="56" x2="268" y2="164"/>
+    <line x1="488" y1="56" x2="488" y2="164"/>
+    <line x1="708" y1="56" x2="708" y2="164"/>
+    <line x1="928" y1="56" x2="928" y2="164"/>
+  </g>
+  <polygon points="1096,36 1152,36 1152,92" fill="#EADCCB"/>
+  <polyline points="1096,36 1096,92 1152,92" fill="none" stroke="#D4C4B0" stroke-width="1.5"/>
+  <g font-family="-apple-system, BlinkMacSystemFont, PingFang SC, Hiragino Sans GB, sans-serif" text-anchor="middle">
+    <g id="step-copy">
+      <text x="158" y="84" fill="#C4512C" font-size="18" font-weight="700">01</text>
+      <text x="158" y="122" fill="#1C1814" font-size="28" font-weight="700">复制</text>
+      <text x="158" y="154" fill="#8A8175" font-size="20">文字或图片</text>
+    </g>
+    <g id="step-keep">
+      <text x="378" y="84" fill="#C4512C" font-size="18" font-weight="700">02</text>
+      <text x="378" y="122" fill="#1C1814" font-size="28" font-weight="700">留下</text>
+      <text x="378" y="154" fill="#8A8175" font-size="20">最多 100 条</text>
+    </g>
+    <g id="step-open">
+      <text x="598" y="84" fill="#C4512C" font-size="18" font-weight="700">03</text>
+      <text x="598" y="122" fill="#1C1814" font-size="28" font-weight="700">Cmd+⇧+V</text>
+      <text x="598" y="154" fill="#8A8175" font-size="20">打开，不抢焦点</text>
+    </g>
+    <g id="step-return">
+      <text x="818" y="84" fill="#C4512C" font-size="18" font-weight="700">04</text>
+      <text x="818" y="122" fill="#1C1814" font-size="28" font-weight="700">回车</text>
+      <text x="818" y="154" fill="#8A8175" font-size="20">写回剪贴板</text>
+    </g>
+    <g id="step-paste">
+      <text x="1024" y="118" fill="#1C1814" font-size="28" font-weight="700">Cmd+V</text>
+      <text x="1024" y="154" fill="#8A8175" font-size="20">原窗口里粘贴</text>
+    </g>
+  </g>
+  <text x="1024" y="84" text-anchor="middle" fill="#C4512C" font-family="-apple-system, BlinkMacSystemFont, PingFang SC, Hiragino Sans GB, sans-serif" font-size="18" font-weight="700">05</text>
+</svg>

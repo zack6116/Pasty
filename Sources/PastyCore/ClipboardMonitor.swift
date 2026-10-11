@@ -2,6 +2,7 @@ import AppKit
 
 public final class ClipboardMonitor {
     public var onChange: ((String) -> Void)?
+    public var onImage: ((Data) -> Void)?
 
     private let pasteboard: NSPasteboard
     private let interval: TimeInterval
@@ -42,6 +43,14 @@ public final class ClipboardMonitor {
         return plainText()
     }
 
+    /// Image already on the pasteboard, when it has no plain text. Concealed contents are omitted.
+    public func existingImagePNG() -> Data? {
+        guard !shouldIgnoreCurrentContents(), plainText() == nil else { return nil }
+        return imagePNG()
+    }
+
+    public var changeCount: Int { pasteboard.changeCount }
+
     /// Reads the pasteboard immediately. The running timer calls this on its own.
     public func checkForChanges() {
         poll()
@@ -54,12 +63,52 @@ public final class ClipboardMonitor {
         lastChangeCount = pasteboard.changeCount
     }
 
+    /// Puts a PNG on the pasteboard and remembers the new change count so the write is not recorded again.
+    @discardableResult
+    public func writeImage(_ pngData: Data) -> Bool {
+        guard ImagePNG.isPNG(pngData) else { return false }
+        let tiff = ImagePNG.tiffRepresentation(ofPNG: pngData)
+        let wrote = commitImage(pngData, tiff: tiff) || commitImage(pngData, tiff: nil)
+        lastChangeCount = pasteboard.changeCount
+        return wrote
+    }
+
     private func poll() {
         let changeCount = pasteboard.changeCount
         guard changeCount != lastChangeCount else { return }
         lastChangeCount = changeCount
-        guard !shouldIgnoreCurrentContents(), let text = plainText() else { return }
-        onChange?(text)
+        guard !shouldIgnoreCurrentContents() else { return }
+        if let text = plainText() {
+            onChange?(text)
+            return
+        }
+        if let image = imagePNG() {
+            onImage?(image)
+        }
+    }
+
+    private func commitImage(_ pngData: Data, tiff: Data?) -> Bool {
+        let item = NSPasteboardItem()
+        item.setData(pngData, forType: .png)
+        if let tiff {
+            item.setData(tiff, forType: .tiff)
+        }
+        pasteboard.clearContents()
+        return pasteboard.writeObjects([item])
+    }
+
+    private func imagePNG() -> Data? {
+        if let png = pasteboard.data(forType: .png), let normalized = ImagePNG.normalizedPNG(png) {
+            return normalized
+        }
+        if let tiff = pasteboard.data(forType: .tiff), let png = ImagePNG.normalizedPNG(tiff) {
+            return png
+        }
+        let jpeg = NSPasteboard.PasteboardType("public.jpeg")
+        if let data = pasteboard.data(forType: jpeg), let png = ImagePNG.normalizedPNG(data) {
+            return png
+        }
+        return nil
     }
 
     private func plainText() -> String? {

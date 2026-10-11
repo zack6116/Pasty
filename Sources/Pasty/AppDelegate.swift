@@ -5,6 +5,7 @@ import ServiceManagement
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let store: ClipboardStore
     private let monitor = ClipboardMonitor()
+    private let screenshots: ScreenshotMonitor
     private let hotkey = HotkeyManager()
     private var panelController: HistoryPanelController!
     private var statusItem: NSStatusItem!
@@ -15,6 +16,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Pasty", isDirectory: true)
         store = ClipboardStore(fileURL: directory.appendingPathComponent("history.json"))
+        let location = ScreenshotMonitor.resolvedLocation()
+        screenshots = ScreenshotMonitor(
+            directory: location.directory,
+            dedicatedFolder: location.dedicatedFolder
+        )
         super.init()
     }
 
@@ -24,10 +30,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self?.store.add(text)
             self?.panelController.reload()
         }
+        monitor.onImage = { [weak self] data in
+            self?.store.addImage(data)
+            self?.panelController.reload()
+        }
         monitor.start()
-        if let existing = monitor.existingPlainText(), !store.contains(existing) {
+        if let image = monitor.existingImagePNG() {
+            if !store.containsImage(image) {
+                store.addImage(image)
+            }
+        } else if let existing = monitor.existingPlainText(), !store.contains(existing) {
             store.add(existing)
         }
+
+        screenshots.pasteboardToken = { [weak self] in
+            self?.monitor.changeCount ?? 0
+        }
+        screenshots.onScreenshots = { [weak self] batch in
+            guard let self else { return }
+            let token = self.monitor.changeCount
+            for shot in batch.sorted(by: { $0.modifiedAt < $1.modifiedAt }) {
+                self.store.addImage(shot.png, at: shot.modifiedAt)
+            }
+            if let png = ScreenshotMonitor.clipboardImage(in: batch, pasteboardToken: token) {
+                self.monitor.writeImage(png)
+            }
+            self.panelController.reload()
+        }
+        screenshots.start()
 
         hotkey.onHotkey = { [weak self] in
             self?.panelController.toggle()
@@ -43,6 +73,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         monitor.stop()
+        screenshots.stop()
         hotkey.unregister()
     }
 

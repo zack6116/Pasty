@@ -5,6 +5,7 @@ public final class HistoryModel: ObservableObject {
     @Published public private(set) var items: [ClipItem] = []
     @Published public var query: String = ""
     @Published public private(set) var selectedID: UUID?
+    @Published public private(set) var isPreviewing = false
     @Published public private(set) var focusToken = 0
 
     public var filtered: [ClipItem] {
@@ -26,6 +27,7 @@ public final class HistoryModel: ObservableObject {
         self.items = items
         query = ""
         selectedID = items.first?.id
+        isPreviewing = false
     }
 
     public func reload(_ items: [ClipItem]) {
@@ -61,12 +63,48 @@ public final class HistoryModel: ObservableObject {
         selectedID = id
     }
 
-    public func selectedText() -> String? {
+    /// Drops one row. The selection moves to the following visible row, or the previous one at the end.
+    public func remove(_ id: UUID) {
+        guard items.contains(where: { $0.id == id }) else { return }
+        let visible = filtered
+        let wasSelected = selectedID == id
+        var neighbor: UUID?
+        if wasSelected, let index = visible.firstIndex(where: { $0.id == id }) {
+            if index + 1 < visible.count {
+                neighbor = visible[index + 1].id
+            } else if index > 0 {
+                neighbor = visible[index - 1].id
+            }
+        }
+        items.removeAll { $0.id == id }
+        if wasSelected {
+            selectedID = neighbor
+            isPreviewing = false
+        }
+    }
+
+    public var selectedItem: ClipItem? {
         let visible = filtered
         if let selectedID, let item = visible.first(where: { $0.id == selectedID }) {
-            return item.text
+            return item
         }
-        return visible.first?.text
+        return visible.first
+    }
+
+    public func selectedText() -> String? {
+        selectedItem?.text
+    }
+
+    public func togglePreview() {
+        guard selectedItem != nil else {
+            isPreviewing = false
+            return
+        }
+        isPreviewing.toggle()
+    }
+
+    public func closePreview() {
+        isPreviewing = false
     }
 
     private func clampSelection() {

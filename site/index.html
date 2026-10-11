@@ -87,12 +87,12 @@
       padding: 4px 16px 8px;
     }
     .card {
-      flex: 0 0 210px;
-      height: 176px;
+      flex: 0 0 220px;
+      min-height: 188px;
       border: 1px solid var(--line);
       border-radius: 16px;
       background: var(--card);
-      padding: 14px;
+      padding: 14px 40px 14px 14px;
       display: flex;
       flex-direction: column;
       position: relative;
@@ -176,12 +176,12 @@
     <div class="shelf" aria-label="横排卡片示意">
       <div class="shelf-bar">
         <div class="pills"><span class="pill on">最近</span><span class="pill">固定 1</span></div>
-        <span>← → 选择 · ⌘P 固定 · ⌘2 只看固定</span>
+        <span>左右选择 · Cmd+P 固定 · Cmd+2 只看固定</span>
       </div>
       <div class="cards">
         <article class="card selected">
           <span class="pin">⌖</span>
-          <h3>会议纪要，下周三前提交</h3>
+          <h3>会议纪要</h3>
           <p>把这段说明贴回正在写的邮件。</p>
           <div class="time">刚刚</div>
         </article>
@@ -193,8 +193,8 @@
         </article>
         <article class="card">
           <span class="pin">⌖</span>
-          <h3>仓库地址</h3>
-          <p>github.com/zack6116/Pasty</p>
+          <h3>一段链接</h3>
+          <p>pasty.coderfather.com</p>
           <div class="time">昨天</div>
         </article>
       </div>

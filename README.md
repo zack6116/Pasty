@@ -26,7 +26,7 @@ Pasty 在后台看系统剪贴板。有新的文字或图片，就记到本机�
 
 需要 macOS 13 或更高版本，以及 Apple 芯片。下载包不包含 Intel 版；Intel Mac 请在本机从源码构建。
 
-1. 打开 [pasty.coderfather.com](https://pasty.coderfather.com)，或直接下载 [Pasty-1.1.0-macos-arm64.zip](https://github.com/zackzhangkai/Pasty/releases/download/v1.1.0/Pasty-1.1.0-macos-arm64.zip)，解压。
+1. 打开 [pasty.coderfather.com](https://pasty.coderfather.com)，或直接下载 [Pasty-1.1.0-macos-arm64.zip](https://github.com/zack6116/Pasty/releases/download/v1.1.0/Pasty-1.1.0-macos-arm64.zip)，解压。
 2. 把 `Pasty.app` 放进「应用程序」文件夹。
 3. 这个包没有 Apple 公证。下载后 macOS 会拦住，先去掉隔离标记再打开：
 
@@ -91,7 +91,7 @@ swift run PastyTests
 
 ## 贡献与反馈
 
-问题用 [GitHub Issues](https://github.com/zackzhangkai/Pasty/issues)。不要在 Issue 里粘贴剪贴板原文或带私人内容的截图；先描述发生了什么。
+问题用 [GitHub Issues](https://github.com/zack6116/Pasty/issues)。不要在 Issue 里粘贴剪贴板原文或带私人内容的截图；先描述发生了什么。
 
 也可以在 [X](https://x.com/kaiz_amm) 找到维护者。
 

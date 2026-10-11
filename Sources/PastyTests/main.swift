@@ -538,6 +538,59 @@ private func testSpaceTogglesPreviewOfTheSelectedCopy() {
     }
 }
 
+private func testPinSurvivesReloadAndIsKeptPastTheCap() {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("PastyTests-\(UUID().uuidString)", isDirectory: true)
+    try! FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let fileURL = directory.appendingPathComponent("history.json")
+    let store = ClipboardStore(fileURL: fileURL)
+    let pinnedDate = Date(timeIntervalSince1970: 1_700_000_000)
+    store.add("keep", at: pinnedDate)
+    let pinnedID = store.items[0].id
+    check(store.setPinned(id: pinnedID, pinned: true), "a card can be pinned")
+    store.add("keep", at: Date(timeIntervalSince1970: 1_700_000_050))
+    check(store.items.first?.pinned == true, "copying the same text keeps the pin")
+    check(store.items.filter { $0.text == "keep" }.count == 1, "a pinned copy is not duplicated")
+
+    for index in 0..<120 {
+        store.add("item-\(index)", at: Date(timeIntervalSince1970: TimeInterval(1_700_000_100 + index)))
+    }
+    check(store.items.contains { $0.id == pinnedID && $0.pinned }, "pinned cards are not trimmed")
+    check(store.items.filter { !$0.pinned }.count == ClipboardStore.maxItems, "unpinned history stays at 100")
+
+    let reloaded = ClipboardStore(fileURL: fileURL)
+    check(reloaded.items.contains { $0.id == pinnedID && $0.pinned }, "pins survive a reload")
+    check(reloaded.setPinned(id: UUID(), pinned: true) == false, "unknown cards are not pinned")
+}
+
+private func testPinnedShelfShowsOnlyPinnedCards() {
+    withStore { store in
+        store.add("older", at: Date(timeIntervalSince1970: 1_700_000_000))
+        store.add("middle", at: Date(timeIntervalSince1970: 1_700_000_100))
+        store.add("newer", at: Date(timeIntervalSince1970: 1_700_000_200))
+        let middle = store.items[1]
+        store.setPinned(id: middle.id, pinned: true)
+
+        let model = HistoryModel()
+        model.prepare(store.items)
+        check(model.shelf == .recent, "the panel opens on recent cards")
+        check(model.filtered.count == 3, "recent shelf shows every card")
+        check(model.pinnedCount == 1, "one card is pinned")
+
+        model.showPinned()
+        check(model.filtered.map(\.text) == ["middle"], "pinned shelf shows only pinned cards")
+        check(model.selectedText() == "middle", "opening the pinned shelf selects that card")
+
+        model.applyPin(id: middle.id, pinned: false)
+        check(model.filtered.isEmpty, "unpinning the last card clears the pinned shelf")
+        check(model.selectedText() == nil, "an empty pinned shelf has nothing selected")
+
+        model.showRecent()
+        check(model.filtered.count == 3, "recent shelf still has the unpinned card")
+    }
+}
+
 testAddPlacesNewestFirstAndSkipsBlankText()
 testDuplicateTextMovesExistingItemToFront()
 testItemsAreCappedAtOneHundred()
@@ -559,6 +612,8 @@ testOlderImageStaysBehindANewerCopy()
 testReencodedImageDoesNotDuplicate()
 testImageSearchSelectsTheMatchingPicture()
 testSpaceTogglesPreviewOfTheSelectedCopy()
+testPinSurvivesReloadAndIsKeptPastTheCap()
+testPinnedShelfShowsOnlyPinnedCards()
 
 if failures > 0 {
     fputs("\(failures) test(s) failed\n", stderr)

@@ -1,17 +1,34 @@
 import Combine
 import Foundation
 
+public enum HistoryShelf: Equatable {
+    case recent
+    case pinned
+}
+
 public final class HistoryModel: ObservableObject {
     @Published public private(set) var items: [ClipItem] = []
     @Published public var query: String = ""
+    @Published public private(set) var shelf: HistoryShelf = .recent
     @Published public private(set) var selectedID: UUID?
     @Published public private(set) var isPreviewing = false
     @Published public private(set) var focusToken = 0
 
+    public var pinnedCount: Int {
+        items.filter(\.pinned).count
+    }
+
     public var filtered: [ClipItem] {
+        let base: [ClipItem]
+        switch shelf {
+        case .recent:
+            base = items
+        case .pinned:
+            base = items.filter(\.pinned)
+        }
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return items }
-        return items.filter { $0.text.localizedCaseInsensitiveContains(trimmed) }
+        guard !trimmed.isEmpty else { return base }
+        return base.filter { $0.text.localizedCaseInsensitiveContains(trimmed) }
     }
 
     private var cancellables = Set<AnyCancellable>()
@@ -23,11 +40,42 @@ public final class HistoryModel: ObservableObject {
         .store(in: &cancellables)
     }
 
-    public func prepare(_ items: [ClipItem]) {
+    public func prepare(_ items: [ClipItem], shelf: HistoryShelf = .recent) {
         self.items = items
+        self.shelf = shelf
         query = ""
-        selectedID = items.first?.id
+        selectedID = filtered.first?.id
         isPreviewing = false
+    }
+
+    public func showRecent() {
+        shelf = .recent
+        clampSelection()
+    }
+
+    public func showPinned() {
+        shelf = .pinned
+        clampSelection()
+    }
+
+    /// Updates the in-memory pin. The store is saved by the caller.
+    public func applyPin(id: UUID, pinned: Bool) {
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        let visible = filtered
+        let leavingShelf = shelf == .pinned && !pinned && selectedID == id
+        var neighbor: UUID?
+        if leavingShelf, let visibleIndex = visible.firstIndex(where: { $0.id == id }) {
+            if visibleIndex + 1 < visible.count {
+                neighbor = visible[visibleIndex + 1].id
+            } else if visibleIndex > 0 {
+                neighbor = visible[visibleIndex - 1].id
+            }
+        }
+        items[index].pinned = pinned
+        if leavingShelf {
+            selectedID = neighbor
+            isPreviewing = false
+        }
     }
 
     public func reload(_ items: [ClipItem]) {

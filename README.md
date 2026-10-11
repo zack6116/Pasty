@@ -10,9 +10,9 @@
 
 | 场景 | 操作 | 结果 |
 | --- | --- | --- |
-| 刚才复制的文字还要再贴一次 | Command+Shift+V，选中，Command+V | 贴回正在用的窗口，焦点不离开 |
-| 连着截了几张图 | 打开历史，用方向键或点击选中 | 选中的图写回系统剪贴板 |
-| 同一段内容又复制了一次 | 不用处理 | 这条回到最上面，不另占一条 |
+| 刚才复制的文字还要再贴一次 | Command+Shift+V，左右选择，回车 | 贴回正在用的窗口，焦点不离开 |
+| 连着截了几张图 | 在横排卡片里点中那一张 | 选中的图写回系统剪贴板 |
+| 有几条会反复用到 | 点卡片上的钉子，或按 Command+P；再按 Command+2 | 这些卡片留在「固定」里，不会被 100 条上限挤掉 |
 
 ## 它怎样工作
 
@@ -20,13 +20,13 @@
   <img src="./assets/readme/workflow.svg" width="100%" alt="五步：复制文字或图片；留在本机，最多 100 条；Command+Shift+V 打开且不抢焦点；回车写回剪贴板；Command+V 在原来的窗口里粘贴。">
 </p>
 
-Pasty 在后台看系统剪贴板。有新的文字或图片，就记到本机历史里，最多 100 条。系统截图若存成文件，新的一张也会进来。按 Command+Shift+V 打开的面板不抢走当前应用的焦点，所以选中之后可以直接 Command+V。
+Pasty 在后台看系统剪贴板。有新的文字或图片，就记到本机历史里。按 Command+Shift+V 打开一排横着的卡片，面板不抢走当前窗口的焦点。点钉子可以把卡片固定，固定的卡片单独放在「固定」里，之后用 Command+2 或菜单栏的「已固定」调出来。未固定的历史最多 100 条。系统截图若存成文件，新的一张也会进来。
 
 ## 安装与第一次使用
 
-需要 macOS 13 或更高版本，以及 Apple 芯片。这份下载包不包含 Intel 版；Intel Mac 请在本机从源码构建。
+需要 macOS 13 或更高版本，以及 Apple 芯片。下载包不包含 Intel 版；Intel Mac 请在本机从源码构建。
 
-1. 下载 [Pasty-1.0.0-macos-arm64.zip](https://github.com/zackzhangkai/Pasty/releases/download/v1.0.0/Pasty-1.0.0-macos-arm64.zip)，解压。
+1. 打开 [pasty.coderfather.com](https://pasty.coderfather.com)，或直接下载 [Pasty-1.1.0-macos-arm64.zip](https://github.com/zackzhangkai/Pasty/releases/download/v1.1.0/Pasty-1.1.0-macos-arm64.zip)，解压。
 2. 把 `Pasty.app` 放进「应用程序」文件夹。
 3. 这个包没有 Apple 公证。下载后 macOS 会拦住，先去掉隔离标记再打开：
 
@@ -35,15 +35,17 @@ xattr -dr com.apple.quarantine /Applications/Pasty.app
 open /Applications/Pasty.app
 ```
 
-4. 成功标志：菜单栏出现剪贴板图标。复制一段文字，按 **Command+Shift+V**，列表里能看到刚才的内容。选中它，再按 **Command+V**，它贴回原来的窗口。
+4. 成功标志：菜单栏出现剪贴板图标。复制一段文字，按 **Command+Shift+V**，卡片里能看到刚才的内容。选中它，再按 **Command+V**，它贴回原来的窗口。
 
 打开之后：
 
 - **Command+Shift+V**：打开或关闭历史
-- **↑ / ↓**：选择一条
+- **← / →**：选择一张卡片。↑ / ↓ 同样可以移动
 - **空格**：放大预览，再按一次关闭
-- **Return** 或点击：把选中项写回剪贴板并关闭
-- **右键**：删除这一条
+- **Return** 或点击卡片：把选中项写回剪贴板并关闭
+- **Command+P**，或点卡片上的钉子：固定或取消固定
+- **Command+2**，或菜单栏「已固定」：只看固定的卡片。Command+1 回到最近
+- **右键**：固定，或删除这一条
 - **Esc**：关闭预览；没有预览时关闭面板
 - 在搜索框里输入，可以按文字过滤
 
@@ -65,7 +67,7 @@ Pasty 不联网，也不把历史交给第三方。
 
 - 只在 macOS 13 及以上运行。GitHub Release 里的包只含 Apple 芯片。
 - 包是 ad-hoc 签名，没有公证，所以不能从 App Store 安装，下载后也要先去掉隔离标记。
-- 最多保留 100 条。更早的会被删掉。历史不跨设备同步。
+- 未固定的历史最多 100 条，更早的会被删掉。固定的卡片会留下来，直到取消固定或删除。历史不跨设备同步。
 - 密码管理器如果没有把剪贴板标成隐藏，那段内容仍可能被记下。
 - 「登录时打开」要先把 `Pasty.app` 放进「应用程序」文件夹。
 - 菜单栏里可以清空全部历史。

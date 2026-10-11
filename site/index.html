@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pasty — macOS 菜单栏剪贴板</title>
+  <meta name="description" content="复制过的文字和图片留在这台 Mac 上。横排卡片，钉住常用的一条，Command+Shift+V 选中后再粘贴。">
+  <link rel="canonical" href="https://pasty.coderfather.com/">
+  <style>
+    :root {
+      --paper: #f4efe6;
+      --paper-deep: #e7dccb;
+      --card: #fffcf7;
+      --ink: #1c1814;
+      --muted: #8a8175;
+      --line: #e0d3c2;
+      --copper: #c4512c;
+      --moss: #1f6b4a;
+      --moss-wash: #e4f1e8;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.55;
+    }
+    a { color: var(--copper); }
+    .wrap { width: min(1040px, calc(100% - 40px)); margin: 0 auto; }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 28px 0 8px;
+    }
+    .brand { font-weight: 700; letter-spacing: -0.03em; }
+    .brand span { color: var(--copper); }
+    header nav a { color: var(--muted); text-decoration: none; margin-left: 18px; font-size: 14px; }
+    h1 {
+      font-size: clamp(40px, 6vw, 72px);
+      line-height: 1.02;
+      letter-spacing: -0.045em;
+      margin: 28px 0 12px;
+    }
+    .lede { font-size: 20px; max-width: 38rem; margin: 0 0 28px; }
+    .actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
+    .download {
+      display: inline-block;
+      background: var(--copper);
+      color: white;
+      text-decoration: none;
+      font-weight: 650;
+      padding: 14px 22px;
+      border-radius: 999px;
+    }
+    .ghost { color: var(--ink); text-decoration: none; font-size: 15px; }
+    .meta { color: var(--muted); font-size: 13px; margin: 0 0 36px; }
+    .shelf {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 22px 8px 18px;
+      box-shadow: 0 18px 40px rgba(28, 24, 20, 0.05);
+    }
+    .shelf-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 16px 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .pills { display: flex; gap: 6px; }
+    .pill {
+      border-radius: 999px;
+      padding: 4px 10px;
+      background: #f3eee6;
+      color: var(--ink);
+      font-weight: 650;
+    }
+    .pill.on { background: var(--ink); color: white; }
+    .cards {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding: 4px 16px 8px;
+    }
+    .card {
+      flex: 0 0 210px;
+      height: 176px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--card);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .card.selected {
+      background: var(--moss-wash);
+      border-color: var(--moss);
+    }
+    .pin {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: white;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .card.pinned .pin { background: #f8e4db; color: var(--copper); }
+    .card h3 { margin: 0; font-size: 16px; letter-spacing: -0.02em; }
+    .card p { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+    .card .time { margin-top: auto; color: var(--muted); font-size: 12px; }
+    .shot {
+      height: 78px;
+      border-radius: 10px;
+      background:
+        linear-gradient(160deg, #f6e1d4, #f3eee6 55%, #e7f0ea);
+      margin-bottom: 8px;
+    }
+    section { padding: 56px 0 8px; }
+    h2 { font-size: 28px; letter-spacing: -0.03em; margin: 0 0 8px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px; }
+    .step, .note {
+      background: rgba(255, 252, 247, 0.7);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+    }
+    .num { color: var(--copper); font-weight: 700; font-size: 13px; }
+    pre {
+      background: var(--ink);
+      color: #f4efe6;
+      border-radius: 14px;
+      padding: 16px 18px;
+      overflow-x: auto;
+      font-size: 14px;
+    }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    footer {
+      padding: 40px 0 56px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    @media (max-width: 800px) {
+      .grid { grid-template-columns: 1fr; }
+      h1 { font-size: 40px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">Pas<span>ty</span></div>
+      <nav>
+        <a href="https://github.com/zackzhangkai/Pasty">源码</a>
+        <a href="https://github.com/zackzhangkai/Pasty/releases/tag/v1.1.0">Release</a>
+      </nav>
+    </header>
+
+    <h1>复制过的，横着摆在菜单栏里。</h1>
+    <p class="lede">文字和截图留在这台 Mac 上。Command+Shift+V 打开一排卡片，选中后再 Command+V，焦点还在原来的窗口。常用的一条可以钉住，之后从「固定」里直接调出来。</p>
+    <div class="actions">
+      <a class="download" href="https://github.com/zackzhangkai/Pasty/releases/download/v1.1.0/Pasty-1.1.0-macos-arm64.zip">下载 Pasty 1.1.0</a>
+      <a class="ghost" href="#open">下载后怎么打开</a>
+    </div>
+    <p class="meta">macOS 13 或更高 · 仅 Apple 芯片 · 未公证，打开前要去掉隔离标记</p>
+
+    <div class="shelf" aria-label="横排卡片示意">
+      <div class="shelf-bar">
+        <div class="pills"><span class="pill on">最近</span><span class="pill">固定 1</span></div>
+        <span>← → 选择 · ⌘P 固定 · ⌘2 只看固定</span>
+      </div>
+      <div class="cards">
+        <article class="card selected">
+          <span class="pin">⌖</span>
+          <h3>会议纪要，下周三前提交</h3>
+          <p>把这段说明贴回正在写的邮件。</p>
+          <div class="time">刚刚</div>
+        </article>
+        <article class="card pinned">
+          <span class="pin">📌</span>
+          <div class="shot" role="img" aria-label="一张截图卡片"></div>
+          <h3>屏幕快照</h3>
+          <div class="time">已固定 · 2 分钟前</div>
+        </article>
+        <article class="card">
+          <span class="pin">⌖</span>
+          <h3>仓库地址</h3>
+          <p>github.com/zackzhangkai/Pasty</p>
+          <div class="time">昨天</div>
+        </article>
+      </div>
+    </div>
+
+    <section id="open">
+      <h2>第一次打开</h2>
+      <p>把下载的 <code>Pasty.app</code> 放进「应用程序」。这个包没有 Apple 公证，macOS 会拦住，先执行：</p>
+      <pre><code>xattr -dr com.apple.quarantine /Applications/Pasty.app
+open /Applications/Pasty.app</code></pre>
+      <div class="grid">
+        <article class="step">
+          <div class="num">01</div>
+          <h3>菜单栏出现剪贴板图标</h3>
+          <p>这就是装好了。复制一段文字。</p>
+        </article>
+        <article class="step">
+          <div class="num">02</div>
+          <h3>Command+Shift+V</h3>
+          <p>横排卡片打开，当前窗口的焦点还在。</p>
+        </article>
+        <article class="step">
+          <div class="num">03</div>
+          <h3>回车，再 Command+V</h3>
+          <p>选中的内容写回系统剪贴板，贴回原来的窗口。</p>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>钉住，就是一组常用的</h2>
+      <div class="grid">
+        <article class="note">
+          <h3>点钉子</h3>
+          <p>卡片右上角，或按 Command+P。固定的卡片会留着，不计入 100 条上限。</p>
+        </article>
+        <article class="note">
+          <h3>只看固定</h3>
+          <p>按 Command+2，或点菜单栏里的「已固定」。Command+1 回到最近复制的。</p>
+        </article>
+        <article class="note">
+          <h3>只在这台 Mac</h3>
+          <p>历史在本机的 Application Support 里。Pasty 不联网，也不把剪贴板交出去。</p>
+        </article>
+      </div>
+    </section>
+
+    <footer>
+      <p>Pasty 1.1.0 · <a href="https://github.com/zackzhangkai/Pasty">GitHub</a> · <a href="https://x.com/kaiz_amm">X</a></p>
+      <p>Intel Mac 没有现成的包，请在那台电脑上从源码构建。问题请发 GitHub Issues，不要贴剪贴板原文。</p>
+    </footer>
+  </div>
+</body>
+</html>

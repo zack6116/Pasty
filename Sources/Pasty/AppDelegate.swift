@@ -100,6 +100,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         showItem.target = self
         menu.addItem(showItem)
 
+        let pinnedItem = NSMenuItem(title: "已固定", action: #selector(showPinned), keyEquivalent: "")
+        pinnedItem.target = self
+        menu.addItem(pinnedItem)
+
         let clearItem = NSMenuItem(title: "清空历史", action: #selector(clearHistory), keyEquivalent: "")
         clearItem.target = self
         menu.addItem(clearItem)
@@ -122,6 +126,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func showHistory() {
         panelController.show()
+    }
+
+    @objc private func showPinned() {
+        panelController.show(shelf: .pinned)
     }
 
     @objc private func clearHistory() {

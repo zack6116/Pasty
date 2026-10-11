@@ -4,8 +4,8 @@ import PastyCore
 import SwiftUI
 
 enum HistoryPanelMetrics {
-    static let width: CGFloat = 440
-    static let height: CGFloat = 520
+    static let width: CGFloat = 880
+    static let height: CGFloat = 340
     static let previewWidth: CGFloat = 680
     static let previewHeight: CGFloat = 720
     static let cornerRadius: CGFloat = 16
@@ -56,6 +56,9 @@ final class HistoryPanelController {
             },
             onDelete: { [weak self] item in
                 self?.delete(item)
+            },
+            onPin: { [weak self] item in
+                self?.togglePin(item)
             }
         ))
         hosting.wantsLayer = true
@@ -84,8 +87,12 @@ final class HistoryPanelController {
         }
     }
 
-    func show() {
-        model.prepare(store.items)
+    func show(shelf: HistoryShelf = .recent) {
+        model.prepare(store.items, shelf: shelf)
+        guard !panel.isVisible else {
+            panel.makeKey()
+            return
+        }
         positionNearMouse()
         installMonitors()
         panel.orderFrontRegardless()
@@ -130,11 +137,25 @@ final class HistoryPanelController {
         model.remove(item.id)
     }
 
+    private func togglePin(_ item: ClipItem) {
+        let pinned = !item.pinned
+        guard store.setPinned(id: item.id, pinned: pinned) else { return }
+        model.applyPin(id: item.id, pinned: pinned)
+        let selected = model.selectedID
+        model.reload(store.items)
+        if let selected {
+            model.select(selected)
+        }
+    }
+
     private func positionNearMouse() {
         let mouse = NSEvent.mouseLocation
         let screen = NSScreen.screens.first(where: { $0.frame.contains(mouse) }) ?? NSScreen.main
         let visible = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-        let size = NSSize(width: HistoryPanelMetrics.width, height: HistoryPanelMetrics.height)
+        let size = NSSize(
+            width: min(HistoryPanelMetrics.width, max(360, visible.width - 16)),
+            height: min(HistoryPanelMetrics.height, max(240, visible.height - 16))
+        )
 
         var origin = NSPoint(x: mouse.x - size.width / 2, y: mouse.y - 12 - size.height)
         if origin.y < visible.minY + 8 {
@@ -199,11 +220,29 @@ final class HistoryPanelController {
         if fieldEditorHasMarkedText() {
             return false
         }
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if flags.contains(.command) {
+            switch event.charactersIgnoringModifiers?.lowercased() {
+            case "p":
+                if let item = model.selectedItem {
+                    togglePin(item)
+                }
+                return true
+            case "1":
+                model.showRecent()
+                return true
+            case "2":
+                model.showPinned()
+                return true
+            default:
+                break
+            }
+        }
         switch event.keyCode {
-        case 126: // up
+        case 123, 126: // left, up
             model.moveSelection(by: -1)
             return true
-        case 125: // down
+        case 124, 125: // right, down
             model.moveSelection(by: 1)
             return true
         case 36, 76: // return, keypad enter

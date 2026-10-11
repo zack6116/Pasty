@@ -1,0 +1,34 @@
+# Pasty
+
+> macOS 菜单栏剪贴板工具。复制过的文字和图片以横排卡片留在菜单栏，Command+Shift+V 打开、选中后粘回原窗口，常用条目可钉住。本地存储，不联网。
+
+## 基本信息
+
+- 站点：https://pasty.coderfather.com/
+- 开发者：Zack（独立开发者）
+- 当前版本：1.1.0
+- 系统要求：macOS 13+，仅 Apple 芯片
+- 许可：开源（https://github.com/zack6116/Pasty）
+- 下载：https://github.com/zack6116/Pasty/releases/download/v1.1.0/Pasty-1.1.0-macos-arm64.zip
+
+## 核心功能
+
+- 剪贴板历史以横排卡片展示在菜单栏，最多保留 100 条
+- Command+Shift+V 呼出卡片，选中后回车 + Command+V 粘贴，焦点保持原窗口
+- 支持钉住常用条目（Command+P），Command+2 只看固定，Command+1 回到最近
+- 历史仅存本机（Application Support），不联网、不上传剪贴板内容
+
+## 安装提示
+
+应用未做 Apple 公证，首次打开需去掉隔离标记：
+
+    xattr -dr com.apple.quarantine /Applications/Pasty.app
+    open /Applications/Pasty.app
+
+## 常见问题
+
+**Pasty 联网吗？** 不联网。剪贴板历史只存在本机。
+
+**Intel Mac 能用吗？** 没有预编译包，需从源码构建。
+
+**历史条数上限？** 100 条，钉住的条目不计入上限。

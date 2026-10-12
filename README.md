@@ -93,7 +93,7 @@ swift run PastyTests
 
 问题用 [GitHub Issues](https://github.com/zack6116/Pasty/issues)。不要在 Issue 里粘贴剪贴板原文或带私人内容的截图；先描述发生了什么。
 
-也可以在 [X](https://x.com/kaiz_amm) 找到维护者。
+也可以在 [X](https://x.com/zack6116) 找到维护者。
 
 ## License
 

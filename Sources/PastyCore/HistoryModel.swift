@@ -3,11 +3,12 @@ import Foundation
 
 public enum HistoryShelf: Equatable {
     case recent
-    case pinned
+    case board(UUID)
 }
 
 public final class HistoryModel: ObservableObject {
     @Published public private(set) var items: [ClipItem] = []
+    @Published public private(set) var boards: [PinBoard] = []
     @Published public var query: String = ""
     @Published public private(set) var shelf: HistoryShelf = .recent
     @Published public private(set) var selectedID: UUID?
@@ -15,7 +16,11 @@ public final class HistoryModel: ObservableObject {
     @Published public private(set) var focusToken = 0
 
     public var pinnedCount: Int {
-        items.filter(\.pinned).count
+        items.filter { $0.boardID != nil }.count
+    }
+
+    public func count(on boardID: UUID) -> Int {
+        items.filter { $0.boardID == boardID }.count
     }
 
     public var filtered: [ClipItem] {
@@ -23,8 +28,8 @@ public final class HistoryModel: ObservableObject {
         switch shelf {
         case .recent:
             base = items
-        case .pinned:
-            base = items.filter(\.pinned)
+        case .board(let id):
+            base = items.filter { $0.boardID == id }
         }
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return base }
@@ -40,9 +45,15 @@ public final class HistoryModel: ObservableObject {
         .store(in: &cancellables)
     }
 
-    public func prepare(_ items: [ClipItem], shelf: HistoryShelf = .recent) {
+    public func prepare(_ items: [ClipItem], boards: [PinBoard] = [], shelf: HistoryShelf = .recent) {
         self.items = items
-        self.shelf = shelf
+        self.boards = boards
+        switch shelf {
+        case .recent:
+            self.shelf = .recent
+        case .board(let id):
+            self.shelf = boards.contains(where: { $0.id == id }) ? .board(id) : .recent
+        }
         query = ""
         selectedID = filtered.first?.id
         isPreviewing = false
@@ -53,16 +64,37 @@ public final class HistoryModel: ObservableObject {
         clampSelection()
     }
 
-    public func showPinned() {
-        shelf = .pinned
+    public func showBoard(_ id: UUID) {
+        guard boards.contains(where: { $0.id == id }) else { return }
+        shelf = .board(id)
         clampSelection()
+    }
+
+    public func showPinned() {
+        if let first = boards.first {
+            showBoard(first.id)
+        }
     }
 
     /// Updates the in-memory pin. The store is saved by the caller.
     public func applyPin(id: UUID, pinned: Bool) {
+        if pinned {
+            applyAssignment(id: id, boardID: boards.first?.id)
+        } else {
+            applyAssignment(id: id, boardID: nil)
+        }
+    }
+
+    public func applyAssignment(id: UUID, boardID: UUID?) {
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        if let boardID, !boards.contains(where: { $0.id == boardID }) { return }
         let visible = filtered
-        let leavingShelf = shelf == .pinned && !pinned && selectedID == id
+        let leavingShelf: Bool
+        if case .board(let current) = shelf, selectedID == id {
+            leavingShelf = current != boardID
+        } else {
+            leavingShelf = false
+        }
         var neighbor: UUID?
         if leavingShelf, let visibleIndex = visible.firstIndex(where: { $0.id == id }) {
             if visibleIndex + 1 < visible.count {
@@ -71,16 +103,23 @@ public final class HistoryModel: ObservableObject {
                 neighbor = visible[visibleIndex - 1].id
             }
         }
-        items[index].pinned = pinned
+        items[index].boardID = boardID
+        items[index].pinned = boardID != nil
         if leavingShelf {
             selectedID = neighbor
             isPreviewing = false
         }
     }
 
-    public func reload(_ items: [ClipItem]) {
+    public func reload(_ items: [ClipItem], boards: [PinBoard]? = nil) {
         let previous = selectedID
         self.items = items
+        if let boards {
+            self.boards = boards
+        }
+        if case .board(let id) = shelf, !self.boards.contains(where: { $0.id == id }) {
+            shelf = .recent
+        }
         if let previous, filtered.contains(where: { $0.id == previous }) {
             selectedID = previous
         } else {

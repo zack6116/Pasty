@@ -20,10 +20,20 @@ struct HistoryView: View {
     var imageURL: (ClipItem) -> URL?
     var onCopy: (ClipItem) -> Void
     var onDelete: (ClipItem) -> Void
-    var onPin: (ClipItem) -> Void
+    var onAssign: (ClipItem, UUID) -> Void
+    var onUnpin: (ClipItem) -> Void
+    var onPinHere: (ClipItem) -> Void
+    var onAddBoard: (String) -> Void
+    var onRenameBoard: (UUID, String) -> Void
+    var onDeleteBoard: (UUID) -> Void
 
     @FocusState private var searchFocused: Bool
+    @FocusState private var nameFocused: Bool
     @State private var hoveredID: UUID?
+    @State private var renamingID: UUID?
+    @State private var draftName = ""
+    @State private var creatingBoard = false
+    @State private var newBoardName = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -71,7 +81,7 @@ struct HistoryView: View {
                     .foregroundStyle(PastePalette.ink)
             }
             shelfSwitch
-            Spacer(minLength: 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
             Text("\(model.filtered.count)")
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .foregroundStyle(PastePalette.muted)
@@ -85,16 +95,111 @@ struct HistoryView: View {
     }
 
     private var shelfSwitch: some View {
-        HStack(spacing: 2) {
-            shelfButton("最近", selected: model.shelf == .recent) {
-                model.showRecent()
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 2) {
+                shelfButton("最近", selected: model.shelf == .recent) {
+                    model.showRecent()
+                }
+                ForEach(model.boards) { board in
+                    boardChip(board)
+                }
+                if creatingBoard {
+                    TextField("名称", text: $newBoardName)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 11, weight: .semibold))
+                        .frame(width: 72)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .focused($nameFocused)
+                        .onSubmit { commitNewBoard() }
+                        .onExitCommand { creatingBoard = false }
+                } else if model.boards.count < ClipboardStore.maxBoards {
+                    Button {
+                        newBoardName = ""
+                        creatingBoard = true
+                        nameFocused = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(PastePalette.ink)
+                            .frame(width: 22, height: 22)
+                    }
+                    .buttonStyle(.plain)
+                    .help("新建固定点")
+                }
             }
-            shelfButton("固定 \(model.pinnedCount)", selected: model.shelf == .pinned) {
-                model.showPinned()
+            .padding(2)
+        }
+        .background(Capsule().fill(Color.white.opacity(0.45)))
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func boardChip(_ board: PinBoard) -> some View {
+        let selected: Bool = {
+            if case .board(let id) = model.shelf { return id == board.id }
+            return false
+        }()
+        return HStack(spacing: 2) {
+            if renamingID == board.id {
+                TextField("名称", text: $draftName)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11, weight: .semibold))
+                    .frame(width: 72)
+                    .focused($nameFocused)
+                    .onSubmit { commitRename(board.id) }
+                    .onExitCommand { renamingID = nil }
+            } else {
+                Button {
+                    model.showBoard(board.id)
+                } label: {
+                    Text("\(board.name) \(model.count(on: board.id))")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(selected ? Color.white : PastePalette.ink)
+                        .lineLimit(1)
+                }
+                .buttonStyle(.plain)
+            }
+            if selected && renamingID != board.id {
+                Button {
+                    beginRename(board)
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(selected ? Color.white.opacity(0.85) : PastePalette.muted)
+                }
+                .buttonStyle(.plain)
+                .help("修改名称")
             }
         }
-        .padding(2)
-        .background(Capsule().fill(Color.white.opacity(0.45)))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Capsule().fill(selected ? PastePalette.ink : Color.clear))
+        .contextMenu {
+            Button("修改名称") { beginRename(board) }
+            Button("删除固定点") { onDeleteBoard(board.id) }
+        }
+    }
+
+    private func beginRename(_ board: PinBoard) {
+        draftName = board.name
+        renamingID = board.id
+        creatingBoard = false
+        nameFocused = true
+    }
+
+    private func commitRename(_ id: UUID) {
+        let name = draftName.trimmingCharacters(in: .whitespacesAndNewlines)
+        renamingID = nil
+        guard !name.isEmpty else { return }
+        onRenameBoard(id, name)
+    }
+
+    private func commitNewBoard() {
+        let name = newBoardName.trimmingCharacters(in: .whitespacesAndNewlines)
+        creatingBoard = false
+        newBoardName = ""
+        guard !name.isEmpty else { return }
+        onAddBoard(name)
     }
 
     private func shelfButton(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
@@ -141,8 +246,8 @@ struct HistoryView: View {
         ZStack {
             if model.items.isEmpty {
                 emptyLabel(symbol: "doc.on.clipboard", title: "暂无复制记录")
-            } else if model.shelf == .pinned && model.pinnedCount == 0 && model.query.isEmpty {
-                emptyLabel(symbol: "pin", title: "还没有固定的卡片")
+            } else if model.filtered.isEmpty && model.query.isEmpty, case .board = model.shelf {
+                emptyLabel(symbol: "pin", title: "这个固定点还没有卡片")
             } else if model.filtered.isEmpty {
                 emptyLabel(symbol: "magnifyingglass", title: "没有匹配的记录")
             } else {
@@ -195,10 +300,11 @@ struct HistoryView: View {
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 HStack(spacing: 6) {
-                    if item.pinned {
-                        Image(systemName: "pin.fill")
-                            .font(.system(size: 9, weight: .bold))
+                    if let name = boardName(for: item) {
+                        Text(name)
+                            .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(PastePalette.copper)
+                            .lineLimit(1)
                     }
                     Text(Self.relativeFormatter.localizedString(for: item.copiedAt, relativeTo: Date()))
                         .font(.system(size: 11))
@@ -227,26 +333,24 @@ struct HistoryView: View {
                 onCopy(item)
             }
 
-            Button {
-                onPin(item)
-            } label: {
-                Image(systemName: item.pinned ? "pin.fill" : "pin")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(item.pinned ? PastePalette.copper : PastePalette.muted)
-                    .frame(width: 26, height: 26)
-                    .background(Circle().fill(item.pinned ? PastePalette.copper.opacity(0.16) : Color.white.opacity(0.9)))
-            }
-            .buttonStyle(.plain)
-            .help(item.pinned ? "取消固定" : "固定")
-            .padding(8)
+            pinControl(item)
+                .padding(8)
         }
         .contextMenu {
-            Button(item.pinned ? "取消固定" : "固定") {
-                onPin(item)
+            if item.boardID == nil {
+                if model.boards.isEmpty {
+                    Button("固定") { onPinHere(item) }
+                }
+                ForEach(model.boards) { board in
+                    Button("固定到「\(board.name)」") { onAssign(item, board.id) }
+                }
+            } else {
+                Button("取消固定") { onUnpin(item) }
+                ForEach(model.boards.filter { $0.id != item.boardID }) { board in
+                    Button("移到「\(board.name)」") { onAssign(item, board.id) }
+                }
             }
-            Button("删除") {
-                onDelete(item)
-            }
+            Button("删除") { onDelete(item) }
         }
         .onHover { hovering in
             hoveredID = hovering ? item.id : (hoveredID == item.id ? nil : hoveredID)
@@ -337,16 +441,55 @@ struct HistoryView: View {
 
     private var footer: some View {
         HStack(spacing: 14) {
-            keyHint("←→", "选择")
+            keyHint("滚轮", "选择")
             keyHint("空格", "预览")
             keyHint("↩", "复制")
             keyHint("⌘P", "固定")
-            keyHint("⌘2", "只看固定")
+            keyHint("⌘2", "固定点")
             keyHint("esc", "关闭")
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 8)
         .background(PastePalette.paperDeep.opacity(0.65))
+    }
+
+    @ViewBuilder
+    private func pinControl(_ item: ClipItem) -> some View {
+        let pinned = item.boardID != nil
+        if model.boards.count > 1 && item.boardID == nil {
+            Menu {
+                ForEach(model.boards) { board in
+                    Button("固定到「\(board.name)」") { onAssign(item, board.id) }
+                }
+            } label: {
+                pinGlyph(filled: false)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .frame(width: 26, height: 26)
+            .help("固定到")
+        } else {
+            Button {
+                onPinHere(item)
+            } label: {
+                pinGlyph(filled: pinned)
+            }
+            .buttonStyle(.plain)
+            .help(pinned ? "取消固定" : "固定")
+        }
+    }
+
+    private func pinGlyph(filled: Bool) -> some View {
+        Image(systemName: filled ? "pin.fill" : "pin")
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(filled ? PastePalette.copper : PastePalette.muted)
+            .frame(width: 26, height: 26)
+            .background(Circle().fill(filled ? PastePalette.copper.opacity(0.16) : Color.white.opacity(0.9)))
+    }
+
+    private func boardName(for item: ClipItem) -> String? {
+        guard let boardID = item.boardID else { return nil }
+        return model.boards.first { $0.id == boardID }?.name
     }
 
     private func keyHint(_ key: String, _ label: String) -> some View {

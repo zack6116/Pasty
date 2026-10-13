@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pasty — macOS 菜单栏剪贴板</title>
-  <meta name="description" content="复制过的文字和图片留在这台 Mac 上。横排卡片，钉住常用的一条，Command+Shift+V 选中后再粘贴。">
+  <meta name="description" content="复制过的文字和图片留在这台 Mac 上。横排卡片，多个可改名的固定点，滚轮选择，Command+Shift+V 选中后再粘贴。">
   <link rel="canonical" href="https://pasty.coderfather.com/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Pasty">
   <meta property="og:title" content="Pasty — macOS 菜单栏剪贴板">
-  <meta property="og:description" content="复制过的文字和图片留在这台 Mac 上。横排卡片，钉住常用的一条，Command+Shift+V 选中后再粘贴。">
+  <meta property="og:description" content="复制过的文字和图片留在这台 Mac 上。横排卡片，多个可改名的固定点，滚轮选择，Command+Shift+V 选中后再粘贴。">
   <meta property="og:url" content="https://pasty.coderfather.com/">
   <meta property="og:image" content="https://pasty.coderfather.com/og.png">
   <meta property="og:image:width" content="1200">
@@ -17,7 +17,7 @@
   <meta property="og:locale" content="zh_CN">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Pasty — macOS 菜单栏剪贴板">
-  <meta name="twitter:description" content="复制过的文字和图片留在这台 Mac 上。横排卡片，钉住常用的一条，Command+Shift+V 选中后再粘贴。">
+  <meta name="twitter:description" content="复制过的文字和图片留在这台 Mac 上。横排卡片，多个可改名的固定点，滚轮选择，Command+Shift+V 选中后再粘贴。">
   <meta name="twitter:image" content="https://pasty.coderfather.com/og.png">
   <script type="application/ld+json">
   {
@@ -26,10 +26,10 @@
     "name": "Pasty",
     "operatingSystem": "macOS 13+",
     "applicationCategory": "UtilitiesApplication",
-    "description": "macOS 菜单栏剪贴板工具：复制过的文字和图片以横排卡片留在菜单栏，Command+Shift+V 选中后粘回原窗口，支持钉住常用条目。本地存储，不联网。",
+    "description": "macOS 菜单栏剪贴板工具：复制过的文字和图片以横排卡片留在菜单栏，Command+Shift+V 选中后粘回原窗口，支持多个可改名的固定点。剪贴板留在本机。",
     "url": "https://pasty.coderfather.com/",
     "image": "https://pasty.coderfather.com/og.png",
-    "softwareVersion": "1.1.0",
+    "softwareVersion": "1.2.0",
     "author": {
       "@type": "Person",
       "name": "Zack",
@@ -198,22 +198,22 @@
       <div class="brand">Pas<span>ty</span></div>
       <nav>
         <a href="https://github.com/zack6116/Pasty">源码</a>
-        <a href="https://github.com/zack6116/Pasty/releases/tag/v1.1.0">Release</a>
+        <a href="https://github.com/zack6116/Pasty/releases/tag/v1.2.0">Release</a>
       </nav>
     </header>
 
     <h1>复制过的，横着摆在菜单栏里。</h1>
-    <p class="lede">文字和截图留在这台 Mac 上。Command+Shift+V 打开一排卡片，选中后再 Command+V，焦点还在原来的窗口。常用的一条可以钉住，之后从「固定」里直接调出来。</p>
+    <p class="lede">文字和截图留在这台 Mac 上。Command+Shift+V 打开一排卡片，滚轮或方向键选中后再 Command+V，焦点还在原来的窗口。常用的可以放进多个固定点，名称自己改。</p>
     <div class="actions">
-      <a class="download" href="https://github.com/zack6116/Pasty/releases/download/v1.1.0/Pasty-1.1.0-macos-arm64.zip">下载 Pasty 1.1.0</a>
+      <a class="download" href="https://github.com/zack6116/Pasty/releases/download/v1.2.0/Pasty-1.2.0-macos-arm64.zip">下载 Pasty 1.2.0</a>
       <a class="ghost" href="#open">下载后怎么打开</a>
     </div>
     <p class="meta">macOS 13 或更高 · 仅 Apple 芯片 · 未公证，打开前要去掉隔离标记</p>
 
     <div class="shelf" aria-label="横排卡片示意">
       <div class="shelf-bar">
-        <div class="pills"><span class="pill on">最近</span><span class="pill">固定 1</span></div>
-        <span>左右选择 · Cmd+P 固定 · Cmd+2 只看固定</span>
+        <div class="pills"><span class="pill on">最近</span><span class="pill">邮件 1</span><span class="pill">素材 2</span></div>
+        <span>滚轮选择 · 多个固定点 · 名称可改</span>
       </div>
       <div class="cards">
         <article class="card selected">
@@ -262,25 +262,25 @@ open /Applications/Pasty.app</code></pre>
     </section>
 
     <section>
-      <h2>钉住，就是一组常用的</h2>
+      <h2>固定点可以有多个</h2>
       <div class="grid">
         <article class="note">
           <h3>点钉子</h3>
-          <p>卡片右上角，或按 Command+P。固定的卡片会留着，不计入 100 条上限。</p>
+          <p>卡片右上角，或按 Command+P。放进固定点的卡片会留着，不计入 100 条上限。</p>
         </article>
         <article class="note">
-          <h3>只看固定</h3>
-          <p>按 Command+2，或点菜单栏里的「已固定」。Command+1 回到最近复制的。</p>
+          <h3>各自的名字</h3>
+          <p>点「+」再加一个固定点，选中后点铅笔改名称。Command+2、Command+3 按顺序打开。</p>
         </article>
         <article class="note">
-          <h3>只在这台 Mac</h3>
-          <p>历史在本机的 Application Support 里。Pasty 不联网，也不把剪贴板交出去。</p>
+          <h3>剪贴板留在本机</h3>
+          <p>历史在本机的 Application Support 里，不会上传。启动时只上报安装设备，用来统计安装次数。</p>
         </article>
       </div>
     </section>
 
     <footer>
-      <p>Pasty 1.1.0 · <a href="https://github.com/zack6116/Pasty">GitHub</a> · <a href="https://x.com/zack6116">X</a></p>
+      <p>Pasty 1.2.0 · <a href="https://github.com/zack6116/Pasty">GitHub</a> · <a href="https://x.com/zack6116">X</a></p>
       <p>Intel Mac 没有现成的包，请在那台电脑上从源码构建。问题请发 GitHub Issues，不要贴剪贴板原文。</p>
     </footer>
   </div>

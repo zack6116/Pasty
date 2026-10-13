@@ -1,22 +1,24 @@
 # Pasty
 
-> macOS 菜单栏剪贴板工具。复制过的文字和图片以横排卡片留在菜单栏，Command+Shift+V 打开、选中后粘回原窗口，常用条目可钉住。本地存储，不联网。
+> macOS 菜单栏剪贴板工具。复制过的文字和图片以横排卡片留在菜单栏，Command+Shift+V 打开、选中后粘回原窗口。常用条目可以放进多个可改名的固定点。剪贴板只存在本机；启动时上报安装设备，用于统计安装次数。
 
 ## 基本信息
 
 - 站点：https://pasty.coderfather.com/
 - 开发者：Zack（独立开发者）
-- 当前版本：1.1.0
+- 当前版本：1.2.0
 - 系统要求：macOS 13+，仅 Apple 芯片
 - 许可：开源（https://github.com/zack6116/Pasty）
-- 下载：https://github.com/zack6116/Pasty/releases/download/v1.1.0/Pasty-1.1.0-macos-arm64.zip
+- 下载：https://github.com/zack6116/Pasty/releases/download/v1.2.0/Pasty-1.2.0-macos-arm64.zip
 
 ## 核心功能
 
 - 剪贴板历史以横排卡片展示在菜单栏，最多保留 100 条
 - Command+Shift+V 呼出卡片，选中后回车 + Command+V 粘贴，焦点保持原窗口
-- 支持钉住常用条目（Command+P），Command+2 只看固定，Command+1 回到最近
-- 历史仅存本机（Application Support），不联网、不上传剪贴板内容
+- 鼠标滚轮向上相当于左方向键，向下相当于右方向键
+- 多个固定点，名称可以改。Command+P 固定，Command+2、Command+3 打开对应固定点
+- 剪贴板历史仅存本机（Application Support），不上传剪贴板内容
+- 启动时向 https://ops.coderfather.com/v1/report 上报安装编号、应用版本、macOS 版本、机型、架构和语言
 
 ## 安装提示
 
@@ -27,8 +29,8 @@
 
 ## 常见问题
 
-**Pasty 联网吗？** 不联网。剪贴板历史只存在本机。
+**Pasty 联网吗？** 剪贴板不上传。每次启动会向运营看板上报安装设备信息，同一个安装编号只计一次。
 
 **Intel Mac 能用吗？** 没有预编译包，需从源码构建。
 
-**历史条数上限？** 100 条，钉住的条目不计入上限。
+**历史条数上限？** 100 条。放进固定点的条目不计入上限。

@@ -573,10 +573,11 @@ private func testPinnedShelfShowsOnlyPinnedCards() {
         store.setPinned(id: middle.id, pinned: true)
 
         let model = HistoryModel()
-        model.prepare(store.items)
+        model.prepare(store.items, boards: store.boards)
         check(model.shelf == .recent, "the panel opens on recent cards")
         check(model.filtered.count == 3, "recent shelf shows every card")
         check(model.pinnedCount == 1, "one card is pinned")
+        check(store.boards.map(\.name) == ["固定"], "the first pin creates the default board")
 
         model.showPinned()
         check(model.filtered.map(\.text) == ["middle"], "pinned shelf shows only pinned cards")
@@ -589,6 +590,99 @@ private func testPinnedShelfShowsOnlyPinnedCards() {
         model.showRecent()
         check(model.filtered.count == 3, "recent shelf still has the unpinned card")
     }
+}
+
+private func testNamedBoardsFilterRenameAndDelete() {
+    withStore { store in
+        store.add("older", at: Date(timeIntervalSince1970: 1_700_000_000))
+        store.add("newer", at: Date(timeIntervalSince1970: 1_700_000_100))
+        let work = store.addBoard(name: "  工作\n")
+        let assets = store.addBoard(name: "素材")
+        check(work?.name == "工作", "a board name is trimmed to one line")
+        check(store.addBoard(name: "工作") == nil, "duplicate board names are rejected")
+        check(store.addBoard(name: "   ") == nil, "a blank board name is rejected")
+        check(store.assign(id: store.items[0].id, boardID: work!.id), "the newer card joins 工作")
+        check(store.assign(id: store.items[1].id, boardID: assets!.id), "the older card joins 素材")
+        check(store.renameBoard(id: work!.id, name: "邮件"), "a board can be renamed")
+        check(store.boards.first { $0.id == work!.id }?.name == "邮件", "the renamed label is stored")
+
+        let model = HistoryModel()
+        model.prepare(store.items, boards: store.boards)
+        model.showBoard(work!.id)
+        check(model.filtered.map(\.text) == ["newer"], "a board shows only its own cards")
+        model.showBoard(assets!.id)
+        check(model.filtered.map(\.text) == ["older"], "another board keeps its own cards")
+
+        check(store.deleteBoard(id: assets!.id), "a board can be deleted")
+        check(store.boards.map(\.name) == ["邮件"], "the other board stays")
+        check(store.items.first { $0.text == "older" }?.boardID == nil, "deleting a board returns its cards")
+    }
+}
+
+private func testLegacyPinBecomesTheDefaultBoard() {
+    let directory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("PastyTests-\(UUID().uuidString)", isDirectory: true)
+    try! FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let fileURL = directory.appendingPathComponent("history.json")
+    let json = """
+    [
+      {
+        "copiedAt" : "2023-11-14T22:13:20Z",
+        "id" : "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE",
+        "pinned" : true,
+        "text" : "legacy"
+      }
+    ]
+    """
+    try! json.write(to: fileURL, atomically: true, encoding: .utf8)
+
+    let store = ClipboardStore(fileURL: fileURL)
+    check(store.boards.map(\.name) == ["固定"], "a legacy pin creates the default board")
+    check(store.items[0].boardID == store.boards[0].id, "the legacy card joins that board")
+    check(store.items[0].pinned, "the legacy card stays pinned")
+
+    let reloaded = ClipboardStore(fileURL: fileURL)
+    check(reloaded.boards == store.boards, "board names survive a reload")
+    check(reloaded.items[0].boardID == store.boards[0].id, "the board assignment survives a reload")
+}
+
+private func testUpwardScrollMatchesTheLeftArrow() {
+    var accumulated: CGFloat = 0
+    let up = ScrollSelection.consume(deltaY: 1, precise: false, accumulated: &accumulated)
+    check(up == -1, "one mouse-wheel notch upward matches the left arrow")
+    let down = ScrollSelection.consume(deltaY: -1, precise: false, accumulated: &accumulated)
+    check(down == 1, "one mouse-wheel notch downward matches the right arrow")
+
+    var trackpad: CGFloat = 0
+    let partial = ScrollSelection.consume(deltaY: 20, precise: true, accumulated: &trackpad)
+    check(partial == 0, "a small trackpad movement does not change the card")
+    let rest = ScrollSelection.consume(deltaY: 20, precise: true, accumulated: &trackpad)
+    check(rest == -1, "trackpad movement moves once the threshold is crossed")
+}
+
+private func testInstallIDStaysStable() {
+    let suite = "pasty-tests-\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let first = InstallIdentity.installID(defaults: defaults)
+    let second = InstallIdentity.installID(defaults: defaults)
+    check(first == second, "the install id stays the same")
+    check(UUID(uuidString: first) != nil, "the install id is a uuid")
+    let report = InstallReport(
+        product: "pasty",
+        installId: first,
+        appVersion: "1.2.0",
+        osVersion: "Version 26.0",
+        model: "Mac14,2",
+        arch: "arm64",
+        locale: "zh_CN"
+    )
+    let data = try! JSONEncoder().encode(report)
+    let object = try! JSONSerialization.jsonObject(with: data) as! [String: Any]
+    check(object["product"] as? String == "pasty", "the report names the product")
+    check(object["installId"] as? String == first, "the report includes the install id")
+    check(object["model"] as? String == "Mac14,2", "the report includes the device model")
 }
 
 testAddPlacesNewestFirstAndSkipsBlankText()
@@ -614,6 +708,10 @@ testImageSearchSelectsTheMatchingPicture()
 testSpaceTogglesPreviewOfTheSelectedCopy()
 testPinSurvivesReloadAndIsKeptPastTheCap()
 testPinnedShelfShowsOnlyPinnedCards()
+testNamedBoardsFilterRenameAndDelete()
+testLegacyPinBecomesTheDefaultBoard()
+testUpwardScrollMatchesTheLeftArrow()
+testInstallIDStaysStable()
 
 if failures > 0 {
     fputs("\(failures) test(s) failed\n", stderr)

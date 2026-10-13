@@ -43,6 +43,8 @@ final class HistoryPanelController {
     private let panel = HistoryPanel()
     private var keyMonitor: Any?
     private var clickMonitor: Any?
+    private var scrollMonitor: Any?
+    private var scrollAccumulated: CGFloat = 0
 
     init(store: ClipboardStore, monitor: ClipboardMonitor) {
         self.store = store
@@ -57,8 +59,23 @@ final class HistoryPanelController {
             onDelete: { [weak self] item in
                 self?.delete(item)
             },
-            onPin: { [weak self] item in
+            onAssign: { [weak self] item, boardID in
+                self?.assign(item, boardID: boardID)
+            },
+            onUnpin: { [weak self] item in
+                self?.assign(item, boardID: nil)
+            },
+            onPinHere: { [weak self] item in
                 self?.togglePin(item)
+            },
+            onAddBoard: { [weak self] name in
+                self?.addBoard(name)
+            },
+            onRenameBoard: { [weak self] id, name in
+                self?.renameBoard(id, name: name)
+            },
+            onDeleteBoard: { [weak self] id in
+                self?.deleteBoard(id)
             }
         ))
         hosting.wantsLayer = true
@@ -88,7 +105,7 @@ final class HistoryPanelController {
     }
 
     func show(shelf: HistoryShelf = .recent) {
-        model.prepare(store.items, shelf: shelf)
+        model.prepare(store.items, boards: store.boards, shelf: shelf)
         guard !panel.isVisible else {
             panel.makeKey()
             return
@@ -109,9 +126,11 @@ final class HistoryPanelController {
 
     func hide() {
         panel.orderOut(nil)
-        let monitors = [keyMonitor, clickMonitor].compactMap { $0 }
+        scrollAccumulated = 0
+        let monitors = [keyMonitor, clickMonitor, scrollMonitor].compactMap { $0 }
         keyMonitor = nil
         clickMonitor = nil
+        scrollMonitor = nil
         DispatchQueue.main.async {
             monitors.forEach(NSEvent.removeMonitor)
         }
@@ -119,7 +138,7 @@ final class HistoryPanelController {
 
     func reload() {
         guard panel.isVisible else { return }
-        model.reload(store.items)
+        model.reload(store.items, boards: store.boards)
     }
 
     private func copy(_ item: ClipItem) {
@@ -138,14 +157,46 @@ final class HistoryPanelController {
     }
 
     private func togglePin(_ item: ClipItem) {
-        let pinned = !item.pinned
-        guard store.setPinned(id: item.id, pinned: pinned) else { return }
-        model.applyPin(id: item.id, pinned: pinned)
+        if item.boardID != nil {
+            assign(item, boardID: nil)
+            return
+        }
+        if case .board(let id) = model.shelf {
+            assign(item, boardID: id)
+            return
+        }
+        if let board = store.boards.first {
+            assign(item, boardID: board.id)
+            return
+        }
+        guard let board = store.addBoard(name: ClipboardStore.defaultBoardName) else { return }
+        assign(item, boardID: board.id)
+    }
+
+    private func assign(_ item: ClipItem, boardID: UUID?) {
+        guard store.assign(id: item.id, boardID: boardID) else { return }
+        model.applyAssignment(id: item.id, boardID: boardID)
         let selected = model.selectedID
-        model.reload(store.items)
+        model.reload(store.items, boards: store.boards)
         if let selected {
             model.select(selected)
         }
+    }
+
+    private func addBoard(_ name: String) {
+        guard let board = store.addBoard(name: name) else { return }
+        model.reload(store.items, boards: store.boards)
+        model.showBoard(board.id)
+    }
+
+    private func renameBoard(_ id: UUID, name: String) {
+        guard store.renameBoard(id: id, name: name) else { return }
+        model.reload(store.items, boards: store.boards)
+    }
+
+    private func deleteBoard(_ id: UUID) {
+        guard store.deleteBoard(id: id) else { return }
+        model.reload(store.items, boards: store.boards)
     }
 
     private func positionNearMouse() {
@@ -202,6 +253,10 @@ final class HistoryPanelController {
         ) { [weak self] _ in
             self?.hide()
         }
+        scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+            guard let self, self.panel.isVisible else { return event }
+            return self.handleScroll(event) ? nil : event
+        }
     }
 
     private func removeMonitors() {
@@ -213,6 +268,30 @@ final class HistoryPanelController {
             NSEvent.removeMonitor(clickMonitor)
             self.clickMonitor = nil
         }
+        if let scrollMonitor {
+            NSEvent.removeMonitor(scrollMonitor)
+            self.scrollMonitor = nil
+        }
+    }
+
+    /// Vertical scrolling moves the selection the same way the left and right arrow keys do.
+    private func handleScroll(_ event: NSEvent) -> Bool {
+        if model.isPreviewing { return false }
+        if event.momentumPhase == .began || event.momentumPhase == .changed || event.momentumPhase == .ended {
+            return true
+        }
+        if event.phase == .began {
+            scrollAccumulated = 0
+        }
+        let steps = ScrollSelection.consume(
+            deltaY: event.scrollingDeltaY,
+            precise: event.hasPreciseScrollingDeltas,
+            accumulated: &scrollAccumulated
+        )
+        if steps != 0 {
+            model.moveSelection(by: steps)
+        }
+        return true
     }
 
     /// Returns true when the event was consumed.
@@ -231,8 +310,13 @@ final class HistoryPanelController {
             case "1":
                 model.showRecent()
                 return true
-            case "2":
-                model.showPinned()
+            case "2", "3", "4", "5", "6", "7", "8", "9":
+                if let digit = event.charactersIgnoringModifiers.flatMap({ Int($0) }) {
+                    let index = digit - 2
+                    if model.boards.indices.contains(index) {
+                        model.showBoard(model.boards[index].id)
+                    }
+                }
                 return true
             default:
                 break

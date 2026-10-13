@@ -58,6 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self.panelController.reload()
         }
         screenshots.start()
+        InstallReporter.send()
 
         hotkey.onHotkey = { [weak self] in
             self?.panelController.toggle()
@@ -84,6 +85,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
         panelController.hide()
         launchAtLoginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        menu.items.filter { $0.tag == 2 }.forEach { menu.removeItem($0) }
+        let insertAt = (menu.items.firstIndex { $0.tag == 1 } ?? -1) + 1
+        if store.boards.isEmpty {
+            let empty = NSMenuItem(title: "还没有固定点", action: nil, keyEquivalent: "")
+            empty.tag = 2
+            empty.isEnabled = false
+            menu.insertItem(empty, at: insertAt)
+            return
+        }
+        for (offset, board) in store.boards.enumerated() {
+            let item = NSMenuItem(title: board.name, action: #selector(showBoard(_:)), keyEquivalent: "")
+            item.target = self
+            item.tag = 2
+            item.representedObject = board.id
+            menu.insertItem(item, at: insertAt + offset)
+        }
     }
 
     private func setupStatusItem() {
@@ -98,11 +115,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let showItem = NSMenuItem(title: "显示历史    ⌘⇧V", action: #selector(showHistory), keyEquivalent: "")
         showItem.target = self
+        showItem.tag = 1
         menu.addItem(showItem)
-
-        let pinnedItem = NSMenuItem(title: "已固定", action: #selector(showPinned), keyEquivalent: "")
-        pinnedItem.target = self
-        menu.addItem(pinnedItem)
 
         let clearItem = NSMenuItem(title: "清空历史", action: #selector(clearHistory), keyEquivalent: "")
         clearItem.target = self
@@ -128,8 +142,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         panelController.show()
     }
 
-    @objc private func showPinned() {
-        panelController.show(shelf: .pinned)
+    @objc private func showBoard(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? UUID else { return }
+        panelController.show(shelf: .board(id))
     }
 
     @objc private func clearHistory() {

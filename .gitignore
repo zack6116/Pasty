@@ -1,3 +1,7 @@
 .build/
 Pasty.app/
 .DS_Store
+windows/target/
+dist/
+*.exe
+*.dmg

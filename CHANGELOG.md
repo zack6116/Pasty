@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.0
+
+Windows 提供下载即可用的便携 EXE。
+
+- GitHub Release 提供 `Pasty-1.3.0-windows-x64.exe`：双击运行，托盘图标，Ctrl+Shift+V 打开历史，选中后 Ctrl+V 粘贴。
+- 文字与 PNG 剪贴板历史留在本机 `%LOCALAPPDATA%\Pasty\`，支持固定点；安装上报产品名仍为 `pasty`。
+- macOS 包暂仍为既有 zip；DMG 打包脚本已就绪，后续单独发布。
+
 ## 1.2.0
 
 滚轮可以换卡片。固定点可以有多个，名称也能改。启动时会上报一次安装设备，用来统计安装次数。

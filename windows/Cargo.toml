@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+members = ["pasty-core", "pasty"]
+
+[profile.release]
+lto = true
+strip = true
+panic = "abort"
+codegen-units = 1

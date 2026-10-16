@@ -26,9 +26,17 @@ Pasty 在后台看系统剪贴板。有新的文字或图片，就记到本机�
 
 ## 安装与第一次使用
 
+### Windows（便携 EXE）
+
+1. 打开 [pasty.coderfather.com](https://pasty.coderfather.com)，或直接下载 [Pasty-1.3.0-windows-x64.exe](https://github.com/zack6116/Pasty/releases/download/v1.3.0/Pasty-1.3.0-windows-x64.exe)。
+2. 双击运行。成功标志：系统托盘出现 Pasty 图标。
+3. 复制一段文字，按 **Ctrl+Shift+V**，卡片里能看到刚才的内容。选中后按 **Ctrl+V** 贴回原来的窗口。
+
+### macOS
+
 需要 macOS 13 或更高版本，以及 Apple 芯片。下载包不包含 Intel 版；Intel Mac 请在本机从源码构建。
 
-1. 打开 [pasty.coderfather.com](https://pasty.coderfather.com)，或直接下载 [Pasty-1.2.0-macos-arm64.zip](https://github.com/zack6116/Pasty/releases/download/v1.2.0/Pasty-1.2.0-macos-arm64.zip)，解压。
+1. 下载 [Pasty-1.2.0-macos-arm64.zip](https://github.com/zack6116/Pasty/releases/download/v1.2.0/Pasty-1.2.0-macos-arm64.zip)，解压。
 2. 把 `Pasty.app` 放进「应用程序」文件夹。
 3. 这个包没有 Apple 公证。下载后 macOS 会拦住，先去掉隔离标记再打开：
 
@@ -70,8 +78,8 @@ Pasty 运行时会占用 Command+Shift+V。其他应用里的「粘贴并匹配�
 
 ## 使用边界
 
-- 只在 macOS 13 及以上运行。GitHub Release 里的包只含 Apple 芯片。
-- 包是 ad-hoc 签名，没有公证，所以不能从 App Store 安装，下载后也要先去掉隔离标记。
+- Windows：下载 EXE 即可用，无需安装。历史在 `%LOCALAPPDATA%\Pasty\`。
+- macOS：需要 13 及以上。GitHub Release 里的 Mac 包只含 Apple 芯片；ad-hoc 签名、未公证，下载后要先去掉隔离标记。
 - 未固定的历史最多 100 条，更早的会被删掉。放进固定点的卡片会留下来，直到移出或删除。固定点最多 12 个，名称最长 16 个字。历史不跨设备同步。
 - 安装统计需要能访问 `ops.coderfather.com`。连不上时剪贴板功能照常使用，这次上报会丢掉。
 - 密码管理器如果没有把剪贴板标成隐藏，那段内容仍可能被记下。

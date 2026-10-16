@@ -1,9 +1,8 @@
-name: Release packages
+name: Release packages (DMG + EXE)
 
+# Tag releases currently use release-windows.yml for EXE-first shipping.
+# Dispatch this workflow when also publishing a macOS DMG.
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
     inputs:
       version:

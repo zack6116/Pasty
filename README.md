@@ -36,8 +36,8 @@ Pasty 在后台看系统剪贴板。有新的文字或图片，就记到本机�
 
 需要 macOS 13 或更高版本，以及 Apple 芯片。下载包不包含 Intel 版；Intel Mac 请在本机从源码构建。
 
-1. 下载 [Pasty-1.2.0-macos-arm64.zip](https://github.com/zack6116/Pasty/releases/download/v1.2.0/Pasty-1.2.0-macos-arm64.zip)，解压。
-2. 把 `Pasty.app` 放进「应用程序」文件夹。
+1. 下载 [Pasty-1.3.0-macos-arm64.dmg](https://github.com/zack6116/Pasty/releases/download/v1.3.0/Pasty-1.3.0-macos-arm64.dmg)，打开。
+2. 把 `Pasty.app` 拖进「应用程序」文件夹。
 3. 这个包没有 Apple 公证。下载后 macOS 会拦住，先去掉隔离标记再打开：
 
 ```bash

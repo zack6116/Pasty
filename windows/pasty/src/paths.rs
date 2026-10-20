@@ -32,3 +32,8 @@ pub fn install_id_path() -> PathBuf {
 pub fn images_dir() -> PathBuf {
     pasty_data_dir().join("images")
 }
+
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn settings_json() -> PathBuf {
+    pasty_data_dir().join("settings.json")
+}

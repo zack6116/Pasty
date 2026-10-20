@@ -5,12 +5,16 @@ mod app;
 #[cfg(windows)]
 mod clipboard_monitor;
 #[cfg(windows)]
+mod fonts;
+#[cfg(windows)]
 mod hotkey;
 #[cfg(windows)]
 mod install_reporter;
 #[cfg(windows)]
 mod panel;
 mod paths;
+#[cfg(windows)]
+mod settings;
 #[cfg(windows)]
 mod tray;
 

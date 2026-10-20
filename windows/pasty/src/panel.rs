@@ -1,5 +1,6 @@
 #![cfg(windows)]
 
+use crate::settings::{HotkeyConfig, Settings};
 use egui::{Color32, RichText, Rounding, Sense, Stroke, Vec2};
 use pasty_core::{ClipItem, HistoryModel, HistoryShelf};
 use uuid::Uuid;
@@ -42,6 +43,7 @@ pub struct PanelActions {
     pub show_board: Option<Uuid>,
     pub show_recent: bool,
     pub close: bool,
+    pub update_hotkey: Option<HotkeyConfig>,
 }
 
 impl Default for PanelActions {
@@ -54,12 +56,27 @@ impl Default for PanelActions {
             show_board: None,
             show_recent: false,
             close: false,
+            update_hotkey: None,
         }
     }
 }
 
+#[derive(Default)]
+pub struct SettingsState {
+    pub show_settings: bool,
+    pub recording: bool,
+    pub pending_hotkey: Option<HotkeyConfig>,
+    pub error_message: Option<String>,
+    pub success_message: Option<String>,
+}
+
 /// Horizontal card strip for clipboard history (scaffold UI).
-pub fn draw_history_panel(ui: &mut egui::Ui, model: &mut HistoryModel) -> PanelActions {
+pub fn draw_history_panel(
+    ui: &mut egui::Ui,
+    model: &mut HistoryModel,
+    settings: &Settings,
+    settings_state: &mut SettingsState,
+) -> PanelActions {
     let mut actions = PanelActions::default();
 
     let rect = ui.max_rect();
@@ -84,8 +101,23 @@ pub fn draw_history_panel(ui: &mut egui::Ui, model: &mut HistoryModel) -> PanelA
                 {
                     actions.close = true;
                 }
+                ui.add_space(8.0);
+                if ui
+                    .button(RichText::new("设置").color(palette::muted()))
+                    .clicked()
+                {
+                    settings_state.show_settings = !settings_state.show_settings;
+                    settings_state.recording = false;
+                    settings_state.pending_hotkey = None;
+                    settings_state.error_message = None;
+                    settings_state.success_message = None;
+                }
             });
         });
+
+        if settings_state.show_settings {
+            draw_settings_panel(ui, settings, settings_state, &mut actions);
+        }
 
         ui.add_space(8.0);
         ui.horizontal(|ui| {
@@ -166,8 +198,9 @@ pub fn draw_history_panel(ui: &mut egui::Ui, model: &mut HistoryModel) -> PanelA
         ui.add_space(10.0);
         ui.horizontal(|ui| {
             ui.add_space(16.0);
+            let hotkey_display = settings.hotkey.display_string();
             ui.label(
-                RichText::new("Ctrl+Shift+V · 双击复制")
+                RichText::new(format!("{} · 双击复制", hotkey_display))
                     .small()
                     .color(palette::muted()),
             );
@@ -226,9 +259,9 @@ fn draw_card(ui: &mut egui::Ui, item: &ClipItem, selected: bool) -> egui::Respon
         palette::card()
     };
     let stroke = if selected {
-        Stroke::new(2.0, palette::moss())
+        Stroke::new(2.0_f32, palette::moss())
     } else {
-        Stroke::new(1.0, palette::line())
+        Stroke::new(1.0_f32, palette::line())
     };
     painter.rect_filled(rect, Rounding::same(12.0), fill);
     painter.rect_stroke(rect, Rounding::same(12.0), stroke);
@@ -268,5 +301,185 @@ fn card_preview(text: &str) -> String {
         format!("{flat}…")
     } else {
         flat
+    }
+}
+
+fn draw_settings_panel(
+    ui: &mut egui::Ui,
+    settings: &Settings,
+    state: &mut SettingsState,
+    actions: &mut PanelActions,
+) {
+    ui.add_space(8.0);
+    ui.horizontal(|ui| {
+        ui.add_space(16.0);
+        ui.group(|ui| {
+            ui.set_min_width(ui.available_width() - 32.0);
+            ui.vertical(|ui| {
+                ui.add_space(8.0);
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("快捷键设置").strong().color(palette::ink()));
+                });
+                ui.add_space(4.0);
+
+                ui.horizontal(|ui| {
+                    ui.label("当前快捷键：");
+                    let display = if state.recording {
+                        if let Some(ref pending) = state.pending_hotkey {
+                            pending.display_string()
+                        } else {
+                            "按下新快捷键…".to_string()
+                        }
+                    } else {
+                        settings.hotkey.display_string()
+                    };
+                    ui.label(
+                        RichText::new(&display)
+                            .strong()
+                            .color(if state.recording {
+                                palette::copper()
+                            } else {
+                                palette::ink()
+                            }),
+                    );
+                });
+
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    if state.recording {
+                        if ui.button("取消").clicked() {
+                            state.recording = false;
+                            state.pending_hotkey = None;
+                            state.error_message = None;
+                        }
+                        if state.pending_hotkey.is_some() {
+                            if ui.button("确认").clicked() {
+                                if let Some(hotkey) = state.pending_hotkey.take() {
+                                    actions.update_hotkey = Some(hotkey);
+                                    state.recording = false;
+                                }
+                            }
+                        }
+                    } else if ui.button("修改快捷键").clicked() {
+                        state.recording = true;
+                        state.pending_hotkey = None;
+                        state.error_message = None;
+                        state.success_message = None;
+                    }
+                });
+
+                if let Some(ref err) = state.error_message {
+                    ui.add_space(4.0);
+                    ui.label(RichText::new(err).color(Color32::from_rgb(200, 60, 60)));
+                }
+                if let Some(ref msg) = state.success_message {
+                    ui.add_space(4.0);
+                    ui.label(RichText::new(msg).color(palette::moss()));
+                }
+
+                ui.add_space(4.0);
+                ui.label(
+                    RichText::new("提示：需要至少一个修饰键（Ctrl、Alt、Shift 或 Win）")
+                        .small()
+                        .color(palette::muted()),
+                );
+                ui.add_space(8.0);
+            });
+        });
+        ui.add_space(16.0);
+    });
+
+    if state.recording {
+        let new_hotkey = capture_hotkey_input(ui);
+        if let Some(hotkey) = new_hotkey {
+            if hotkey.has_modifiers() {
+                state.pending_hotkey = Some(hotkey);
+                state.error_message = None;
+            } else if !hotkey.key.is_empty() {
+                state.error_message =
+                    Some("请至少选择一个修饰键（Ctrl、Alt、Shift 或 Win）".to_string());
+            }
+        }
+    }
+}
+
+fn capture_hotkey_input(ui: &mut egui::Ui) -> Option<HotkeyConfig> {
+    let input = ui.input(|i| {
+        let ctrl = i.modifiers.ctrl;
+        let alt = i.modifiers.alt;
+        let shift = i.modifiers.shift;
+        let command = i.modifiers.command;
+
+        for key in &i.keys_down {
+            if let Some(key_str) = egui_key_to_string(*key) {
+                return Some(HotkeyConfig {
+                    ctrl,
+                    alt,
+                    shift,
+                    win: command && !ctrl,
+                    key: key_str,
+                });
+            }
+        }
+        None
+    });
+    input
+}
+
+fn egui_key_to_string(key: egui::Key) -> Option<String> {
+    use egui::Key;
+    match key {
+        Key::A => Some("A".to_string()),
+        Key::B => Some("B".to_string()),
+        Key::C => Some("C".to_string()),
+        Key::D => Some("D".to_string()),
+        Key::E => Some("E".to_string()),
+        Key::F => Some("F".to_string()),
+        Key::G => Some("G".to_string()),
+        Key::H => Some("H".to_string()),
+        Key::I => Some("I".to_string()),
+        Key::J => Some("J".to_string()),
+        Key::K => Some("K".to_string()),
+        Key::L => Some("L".to_string()),
+        Key::M => Some("M".to_string()),
+        Key::N => Some("N".to_string()),
+        Key::O => Some("O".to_string()),
+        Key::P => Some("P".to_string()),
+        Key::Q => Some("Q".to_string()),
+        Key::R => Some("R".to_string()),
+        Key::S => Some("S".to_string()),
+        Key::T => Some("T".to_string()),
+        Key::U => Some("U".to_string()),
+        Key::V => Some("V".to_string()),
+        Key::W => Some("W".to_string()),
+        Key::X => Some("X".to_string()),
+        Key::Y => Some("Y".to_string()),
+        Key::Z => Some("Z".to_string()),
+        Key::Num0 => Some("0".to_string()),
+        Key::Num1 => Some("1".to_string()),
+        Key::Num2 => Some("2".to_string()),
+        Key::Num3 => Some("3".to_string()),
+        Key::Num4 => Some("4".to_string()),
+        Key::Num5 => Some("5".to_string()),
+        Key::Num6 => Some("6".to_string()),
+        Key::Num7 => Some("7".to_string()),
+        Key::Num8 => Some("8".to_string()),
+        Key::Num9 => Some("9".to_string()),
+        Key::F1 => Some("F1".to_string()),
+        Key::F2 => Some("F2".to_string()),
+        Key::F3 => Some("F3".to_string()),
+        Key::F4 => Some("F4".to_string()),
+        Key::F5 => Some("F5".to_string()),
+        Key::F6 => Some("F6".to_string()),
+        Key::F7 => Some("F7".to_string()),
+        Key::F8 => Some("F8".to_string()),
+        Key::F9 => Some("F9".to_string()),
+        Key::F10 => Some("F10".to_string()),
+        Key::F11 => Some("F11".to_string()),
+        Key::F12 => Some("F12".to_string()),
+        Key::Space => Some("SPACE".to_string()),
+        Key::Tab => Some("TAB".to_string()),
+        Key::Backtick => Some("BACKQUOTE".to_string()),
+        _ => None,
     }
 }

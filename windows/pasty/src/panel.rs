@@ -226,9 +226,9 @@ fn draw_card(ui: &mut egui::Ui, item: &ClipItem, selected: bool) -> egui::Respon
         palette::card()
     };
     let stroke = if selected {
-        Stroke::new(2.0, palette::moss())
+        Stroke::new(2.0_f32, palette::moss())
     } else {
-        Stroke::new(1.0, palette::line())
+        Stroke::new(1.0_f32, palette::line())
     };
     painter.rect_filled(rect, Rounding::same(12.0), fill);
     painter.rect_stroke(rect, Rounding::same(12.0), stroke);

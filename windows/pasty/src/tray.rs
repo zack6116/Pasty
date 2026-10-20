@@ -7,6 +7,7 @@ use tray_icon::{Icon, TrayIcon, TrayIconBuilder};
 #[derive(Debug, Clone, Copy)]
 pub enum TrayCommand {
     ShowHistory,
+    ShowSettings,
     Quit,
 }
 
@@ -18,11 +19,14 @@ impl TrayService {
     pub fn start() -> Result<(Self, Receiver<TrayCommand>), String> {
         let menu = Menu::new();
         let show = MenuItem::new("显示历史", true, None);
+        let settings = MenuItem::new("设置", true, None);
         let quit = MenuItem::new("退出", true, None);
         menu.append(&show).map_err(|e| e.to_string())?;
+        menu.append(&settings).map_err(|e| e.to_string())?;
         menu.append(&quit).map_err(|e| e.to_string())?;
 
         let show_id = show.id().clone();
+        let settings_id = settings.id().clone();
         let quit_id = quit.id().clone();
 
         let icon = default_icon()?;
@@ -39,6 +43,8 @@ impl TrayService {
             while let Ok(event) = menu_channel.recv() {
                 if event.id == show_id {
                     let _ = tx.send(TrayCommand::ShowHistory);
+                } else if event.id == settings_id {
+                    let _ = tx.send(TrayCommand::ShowSettings);
                 } else if event.id == quit_id {
                     let _ = tx.send(TrayCommand::Quit);
                 }

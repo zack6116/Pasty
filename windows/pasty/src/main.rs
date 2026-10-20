@@ -12,6 +12,8 @@ mod install_reporter;
 mod panel;
 mod paths;
 #[cfg(windows)]
+mod settings;
+#[cfg(windows)]
 mod tray;
 
 fn main() {

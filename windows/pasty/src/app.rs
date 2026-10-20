@@ -3,20 +3,57 @@
 use crate::clipboard_monitor::{ClipboardMonitor, MonitorHandle};
 use crate::hotkey::HotkeyService;
 use crate::install_reporter::InstallReporter;
-use crate::panel::{self, PanelActions};
+use crate::panel::{self, PanelActions, SettingsState};
 use crate::paths;
+use crate::settings::{self, Settings};
 use crate::tray::{TrayCommand, TrayService};
 use chrono::Utc;
-use eframe::egui;
+use eframe::egui::{self, FontData, FontDefinitions, FontFamily};
 use pasty_core::{ClipboardStore, HistoryModel, HistoryShelf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+
+fn load_cjk_fonts(ctx: &egui::Context) {
+    let mut fonts = FontDefinitions::default();
+
+    let font_paths = [
+        r"C:\Windows\Fonts\msyh.ttc",
+        r"C:\Windows\Fonts\msyhbd.ttc",
+        r"C:\Windows\Fonts\simhei.ttf",
+        r"C:\Windows\Fonts\simsun.ttc",
+        r"C:\Windows\Fonts\mingliu.ttc",
+    ];
+
+    for path in font_paths {
+        if let Ok(data) = std::fs::read(path) {
+            fonts.font_data.insert(
+                "cjk_fallback".to_owned(),
+                FontData::from_owned(data).into(),
+            );
+            fonts
+                .families
+                .entry(FontFamily::Proportional)
+                .or_default()
+                .push("cjk_fallback".to_owned());
+            fonts
+                .families
+                .entry(FontFamily::Monospace)
+                .or_default()
+                .push("cjk_fallback".to_owned());
+            break;
+        }
+    }
+
+    ctx.set_fonts(fonts);
+}
 
 pub fn run() -> Result<(), String> {
     let data_dir = paths::pasty_data_dir();
     std::fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
 
     InstallReporter::send();
+
+    let settings = settings::load_settings();
 
     let store = Arc::new(Mutex::new(ClipboardStore::new(paths::history_json())));
     let model = Arc::new(Mutex::new(HistoryModel::new()));
@@ -47,12 +84,12 @@ pub fn run() -> Result<(), String> {
         },
     );
 
-    let (hotkey, hotkey_rx) = HotkeyService::start()?;
+    let (hotkey, hotkey_rx) = HotkeyService::start(&settings.hotkey).map_err(|e| e.to_chinese())?;
     let (tray, tray_rx) = TrayService::start()?;
 
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([720.0, 280.0])
+            .with_inner_size([720.0, 320.0])
             .with_decorations(false)
             .with_transparent(true)
             .with_always_on_top()
@@ -67,14 +104,19 @@ pub fn run() -> Result<(), String> {
         hotkey_rx,
         tray_rx,
         panel_visible: false,
-        _hotkey: hotkey,
+        hotkey,
+        settings,
+        settings_state: SettingsState::default(),
         _tray: tray,
     };
 
     eframe::run_native(
         "Pasty",
         options,
-        Box::new(|_cc| Ok(Box::new(app_state))),
+        Box::new(|cc| {
+            load_cjk_fonts(&cc.egui_ctx);
+            Ok(Box::new(app_state))
+        }),
     )
     .map_err(|e| e.to_string())
 }
@@ -86,7 +128,9 @@ struct PastyApp {
     hotkey_rx: std::sync::mpsc::Receiver<()>,
     tray_rx: std::sync::mpsc::Receiver<TrayCommand>,
     panel_visible: bool,
-    _hotkey: HotkeyService,
+    hotkey: HotkeyService,
+    settings: Settings,
+    settings_state: SettingsState,
     _tray: TrayService,
 }
 
@@ -117,7 +161,12 @@ impl eframe::App for PastyApp {
             .frame(egui::Frame::none())
             .show(ctx, |ui| {
                 let mut model = self.model.lock().unwrap();
-                let actions = panel::draw_history_panel(ui, &mut model);
+                let actions = panel::draw_history_panel(
+                    ui,
+                    &mut model,
+                    &self.settings,
+                    &mut self.settings_state,
+                );
                 drop(model);
                 self.apply_actions(ctx, actions);
             });
@@ -204,6 +253,21 @@ impl PastyApp {
             let mut model = self.model.lock().unwrap();
             model.reload(store.items().to_vec(), Some(store.boards().to_vec()));
             model.apply_pin(id, false);
+        }
+        if let Some(new_hotkey) = actions.update_hotkey {
+            match self.hotkey.update_hotkey(&new_hotkey) {
+                Ok(()) => {
+                    self.settings.hotkey = new_hotkey;
+                    if let Err(e) = settings::save_settings(&self.settings) {
+                        self.settings_state.error_message = Some(e);
+                    } else {
+                        self.settings_state.success_message = Some("快捷键已更新".to_string());
+                    }
+                }
+                Err(e) => {
+                    self.settings_state.error_message = Some(e.to_chinese());
+                }
+            }
         }
     }
 }

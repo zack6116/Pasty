@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>在线剪贴板 - Pasty</title>
+  <meta name="description" content="Pasty 在线剪贴板：输入文字，分享链接，任何设备打开即可查看和编辑。">
+  <meta name="robots" content="noindex">
+  <style>
+    :root {
+      --paper: #f4efe6;
+      --paper-deep: #e7dccb;
+      --card: #fffcf7;
+      --ink: #1c1814;
+      --muted: #8a8175;
+      --line: #e0d3c2;
+      --copper: #c4512c;
+      --moss: #1f6b4a;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--line);
+      background: var(--card);
+    }
+    .brand { font-weight: 700; letter-spacing: -0.03em; text-decoration: none; color: var(--ink); }
+    .brand span { color: var(--copper); }
+    .actions { display: flex; gap: 10px; align-items: center; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .btn-primary {
+      background: var(--copper);
+      color: white;
+    }
+    .btn-primary:hover { background: #b5472a; }
+    .btn-secondary {
+      background: var(--paper-deep);
+      color: var(--ink);
+    }
+    .btn-secondary:hover { background: #ddd0ba; }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      max-width: 900px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    .editor-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    #editor {
+      flex: 1;
+      width: 100%;
+      border: none;
+      padding: 20px;
+      font-size: 15px;
+      font-family: inherit;
+      line-height: 1.6;
+      resize: none;
+      background: transparent;
+      color: var(--ink);
+    }
+    #editor:focus { outline: none; }
+    #editor::placeholder { color: var(--muted); }
+    .status-bar {
+      padding: 10px 20px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: var(--muted);
+      background: var(--paper);
+    }
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+    .status-dot.saving { background: #f0ad4e; }
+    .status-dot.saved { background: var(--moss); }
+    .status-dot.error { background: #d9534f; }
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--muted);
+    }
+    .error-message {
+      text-align: center;
+      padding: 40px;
+      color: var(--copper);
+    }
+    .error-message h2 { margin-bottom: 10px; }
+    .share-url {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--paper);
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .share-url code {
+      font-family: ui-monospace, monospace;
+      color: var(--ink);
+    }
+    footer {
+      padding: 16px 20px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+    }
+    footer a { color: var(--copper); }
+    @media (max-width: 600px) {
+      main { padding: 12px; }
+      header { padding: 12px 16px; }
+      .share-url { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/" class="brand">Pas<span>ty</span></a>
+    <div class="actions">
+      <div class="share-url" id="shareUrl" style="display: none;">
+        链接：<code id="urlDisplay"></code>
+        <button class="btn btn-secondary" onclick="copyUrl()" title="复制链接">📋</button>
+      </div>
+      <button class="btn btn-primary" id="newBtn" onclick="createNew()">+ 新建</button>
+    </div>
+  </header>
+  
+  <main>
+    <div id="loading" class="loading">加载中…</div>
+    <div id="errorBox" class="error-message" style="display: none;">
+      <h2>😢 出错了</h2>
+      <p id="errorText"></p>
+      <br>
+      <button class="btn btn-primary" onclick="createNew()">新建一个</button>
+    </div>
+    <div id="editorContainer" class="editor-wrap" style="display: none;">
+      <textarea id="editor" placeholder="在这里输入文字，会自动保存…"></textarea>
+      <div class="status-bar">
+        <div class="status-indicator">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">就绪</span>
+        </div>
+        <div id="charCount">0 字符</div>
+      </div>
+    </div>
+  </main>
+  
+  <footer>
+    <a href="/">Pasty</a> 在线剪贴板 · 内容保留 30 天 · 最大 100KB
+  </footer>
+
+  <script>
+    const API_BASE = '/api/share';
+    let currentId = null;
+    let saveTimeout = null;
+    let lastSavedContent = '';
+    let pollInterval = null;
+    
+    const editor = document.getElementById('editor');
+    const loading = document.getElementById('loading');
+    const errorBox = document.getElementById('errorBox');
+    const errorText = document.getElementById('errorText');
+    const editorContainer = document.getElementById('editorContainer');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const charCount = document.getElementById('charCount');
+    const shareUrl = document.getElementById('shareUrl');
+    const urlDisplay = document.getElementById('urlDisplay');
+    
+    function getIdFromPath() {
+      const path = window.location.pathname;
+      const match = path.match(/^\/s\/([a-zA-Z0-9]{8,12})$/);
+      return match ? match[1] : null;
+    }
+    
+    function isNewPage() {
+      return window.location.pathname === '/s/new' || window.location.pathname === '/s/';
+    }
+    
+    function showLoading() {
+      loading.style.display = 'flex';
+      errorBox.style.display = 'none';
+      editorContainer.style.display = 'none';
+    }
+    
+    function showError(message) {
+      loading.style.display = 'none';
+      errorBox.style.display = 'block';
+      editorContainer.style.display = 'none';
+      errorText.textContent = message;
+    }
+    
+    function showEditor() {
+      loading.style.display = 'none';
+      errorBox.style.display = 'none';
+      editorContainer.style.display = 'flex';
+    }
+    
+    function setStatus(status, text) {
+      statusDot.className = 'status-dot ' + status;
+      statusText.textContent = text;
+    }
+    
+    function updateCharCount() {
+      const len = editor.value.length;
+      charCount.textContent = len.toLocaleString() + ' 字符';
+    }
+    
+    function updateShareUrl() {
+      if (currentId) {
+        const url = window.location.origin + '/s/' + currentId;
+        urlDisplay.textContent = url;
+        shareUrl.style.display = 'flex';
+      } else {
+        shareUrl.style.display = 'none';
+      }
+    }
+    
+    async function loadShare(id) {
+      try {
+        const res = await fetch(`${API_BASE}/${id}`);
+        const data = await res.json();
+        
+        if (!res.ok) {
+          showError(data.error || '加载失败');
+          return;
+        }
+        
+        currentId = id;
+        editor.value = data.content;
+        lastSavedContent = data.content;
+        updateCharCount();
+        updateShareUrl();
+        showEditor();
+        setStatus('saved', '已加载');
+        startPolling();
+      } catch (e) {
+        showError('网络错误，请刷新重试');
+      }
+    }
+    
+    async function createShare(content = '') {
+      try {
+        setStatus('saving', '创建中…');
+        const res = await fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content }),
+        });
+        const data = await res.json();
+        
+        if (!res.ok) {
+          setStatus('error', data.error || '创建失败');
+          return null;
+        }
+        
+        currentId = data.id;
+        lastSavedContent = content;
+        window.history.replaceState(null, '', '/s/' + data.id);
+        document.title = '在线剪贴板 - Pasty';
+        updateShareUrl();
+        setStatus('saved', '已保存');
+        startPolling();
+        return data.id;
+      } catch (e) {
+        setStatus('error', '网络错误');
+        return null;
+      }
+    }
+    
+    async function saveShare() {
+      if (!currentId) {
+        await createShare(editor.value);
+        return;
+      }
+      
+      const content = editor.value;
+      if (content === lastSavedContent) {
+        return;
+      }
+      
+      try {
+        setStatus('saving', '保存中…');
+        const res = await fetch(`${API_BASE}/${currentId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content }),
+        });
+        const data = await res.json();
+        
+        if (!res.ok) {
+          setStatus('error', data.error || '保存失败');
+          return;
+        }
+        
+        lastSavedContent = content;
+        setStatus('saved', '已保存');
+      } catch (e) {
+        setStatus('error', '网络错误');
+      }
+    }
+    
+    function scheduleSave() {
+      if (saveTimeout) {
+        clearTimeout(saveTimeout);
+      }
+      setStatus('saving', '输入中…');
+      saveTimeout = setTimeout(saveShare, 800);
+    }
+    
+    async function pollForUpdates() {
+      if (!currentId || document.hidden) return;
+      
+      try {
+        const res = await fetch(`${API_BASE}/${currentId}`);
+        if (!res.ok) return;
+        
+        const data = await res.json();
+        if (data.content !== lastSavedContent && data.content !== editor.value) {
+          if (document.activeElement !== editor) {
+            editor.value = data.content;
+            lastSavedContent = data.content;
+            updateCharCount();
+            setStatus('saved', '已同步');
+          }
+        }
+      } catch (e) {
+        // Ignore polling errors
+      }
+    }
+    
+    function startPolling() {
+      if (pollInterval) clearInterval(pollInterval);
+      pollInterval = setInterval(pollForUpdates, 3000);
+    }
+    
+    function createNew() {
+      if (pollInterval) clearInterval(pollInterval);
+      currentId = null;
+      lastSavedContent = '';
+      editor.value = '';
+      updateCharCount();
+      window.history.pushState(null, '', '/s/new');
+      shareUrl.style.display = 'none';
+      showEditor();
+      setStatus('', '新建');
+      editor.focus();
+    }
+    
+    function copyUrl() {
+      const url = window.location.origin + '/s/' + currentId;
+      navigator.clipboard.writeText(url).then(() => {
+        const btn = event.target;
+        const orig = btn.textContent;
+        btn.textContent = '✓';
+        setTimeout(() => btn.textContent = orig, 1500);
+      });
+    }
+    
+    editor.addEventListener('input', () => {
+      updateCharCount();
+      scheduleSave();
+    });
+    
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && currentId) {
+        pollForUpdates();
+      }
+    });
+    
+    // Initialize
+    (async function init() {
+      const id = getIdFromPath();
+      
+      if (id) {
+        await loadShare(id);
+      } else if (isNewPage() || window.location.pathname === '/s/') {
+        showEditor();
+        setStatus('', '新建');
+        editor.focus();
+      } else {
+        window.location.href = '/s/new';
+      }
+    })();
+  </script>
+</body>
+</html>

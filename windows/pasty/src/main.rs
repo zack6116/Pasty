@@ -14,6 +14,8 @@ mod paths;
 #[cfg(windows)]
 mod settings;
 #[cfg(windows)]
+mod share;
+#[cfg(windows)]
 mod tray;
 
 fn main() {

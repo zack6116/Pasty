@@ -44,6 +44,7 @@ pub struct PanelActions {
     pub show_recent: bool,
     pub close: bool,
     pub update_hotkey: Option<HotkeyConfig>,
+    pub share_id: Option<Uuid>,
 }
 
 impl Default for PanelActions {
@@ -57,6 +58,7 @@ impl Default for PanelActions {
             show_recent: false,
             close: false,
             update_hotkey: None,
+            share_id: None,
         }
     }
 }
@@ -68,6 +70,7 @@ pub struct SettingsState {
     pub pending_hotkey: Option<HotkeyConfig>,
     pub error_message: Option<String>,
     pub success_message: Option<String>,
+    pub share_status: Option<String>,
 }
 
 /// Horizontal card strip for clipboard history (scaffold UI).
@@ -171,6 +174,12 @@ pub fn draw_history_panel(
                                 actions.copy_id = Some(item.id);
                                 ui.close_menu();
                             }
+                            if !item.is_image() {
+                                if ui.button("分享").clicked() {
+                                    actions.share_id = Some(item.id);
+                                    ui.close_menu();
+                                }
+                            }
                             if item.pinned {
                                 if ui.button("取消固定").clicked() {
                                     actions.unpin_id = Some(item.id);
@@ -198,12 +207,16 @@ pub fn draw_history_panel(
         ui.add_space(10.0);
         ui.horizontal(|ui| {
             ui.add_space(16.0);
-            let hotkey_display = settings.hotkey.display_string();
-            ui.label(
-                RichText::new(format!("{} · 双击复制", hotkey_display))
-                    .small()
-                    .color(palette::muted()),
-            );
+            if let Some(ref status) = settings_state.share_status {
+                ui.label(RichText::new(status).small().color(palette::copper()));
+            } else {
+                let hotkey_display = settings.hotkey.display_string();
+                ui.label(
+                    RichText::new(format!("{} · 双击复制 · 右键分享", hotkey_display))
+                        .small()
+                        .color(palette::muted()),
+                );
+            }
         });
         ui.add_space(12.0);
     });

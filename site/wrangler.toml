@@ -1,0 +1,18 @@
+name = "pasty"
+compatibility_date = "2024-11-01"
+
+# Pages project settings
+pages_build_output_dir = "."
+
+# KV namespace binding for shares storage
+# Create with: wrangler kv:namespace create SHARES
+# Then add the ID below
+[[kv_namespaces]]
+binding = "SHARES"
+id = "PASTE_YOUR_KV_NAMESPACE_ID_HERE"
+
+# Optional: preview namespace for local dev
+# [[kv_namespaces]]
+# binding = "SHARES"
+# id = "PASTE_YOUR_PREVIEW_KV_ID_HERE"
+# preview_id = "PASTE_YOUR_PREVIEW_KV_ID_HERE"

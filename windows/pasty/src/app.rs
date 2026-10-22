@@ -187,6 +187,7 @@ impl PastyApp {
             );
             model.request_focus();
         }
+        self.settings_state.share_status = None;
         self.panel_visible = true;
         ctx.send_viewport_cmd(egui::ViewportCommand::Visible(true));
         ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
@@ -194,6 +195,7 @@ impl PastyApp {
 
     fn hide_panel(&mut self, ctx: &egui::Context) {
         self.panel_visible = false;
+        self.settings_state.share_status = None;
         ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
     }
 
@@ -266,6 +268,32 @@ impl PastyApp {
                 }
                 Err(e) => {
                     self.settings_state.error_message = Some(e.to_chinese());
+                }
+            }
+        }
+        if let Some(id) = actions.share_id {
+            let text = {
+                let store = self.store.lock().unwrap();
+                store
+                    .items()
+                    .iter()
+                    .find(|i| i.id == id && !i.is_image())
+                    .map(|item| item.text.clone())
+            };
+            if let Some(content) = text {
+                self.settings_state.share_status = Some("正在分享…".to_string());
+                match crate::share::upload_share(&content) {
+                    Ok(url) => {
+                        if self.monitor.write_text(&url) {
+                            self.settings_state.share_status =
+                                Some("分享链接已复制到剪贴板".to_string());
+                        } else {
+                            self.settings_state.share_status = Some(format!("分享成功: {}", url));
+                        }
+                    }
+                    Err(e) => {
+                        self.settings_state.share_status = Some(format!("分享失败: {}", e));
+                    }
                 }
             }
         }
